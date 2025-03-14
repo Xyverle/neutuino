@@ -46,7 +46,8 @@ struct Termios {
     cc: [u8; NCCS],
 }
 
-#[must_use] pub fn is_terminal() -> bool {
+#[must_use]
+pub fn is_terminal() -> bool {
     unsafe { isatty(1) != 0 }
 }
 
@@ -85,14 +86,14 @@ pub fn disable_raw_mode() -> io::Result<()> {
 
 fn get_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
     if unsafe { tcgetattr(fd, &raw mut *termios) } != 0 {
-        return Err(io::Error::last_os_error())
+        return Err(io::Error::last_os_error());
     }
     Ok(())
 }
 
 fn set_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
     if unsafe { tcsetattr(fd, 0, std::ptr::from_mut(termios)) } != 0 {
-        return Err(io::Error::last_os_error())
+        return Err(io::Error::last_os_error());
     }
     Ok(())
 }

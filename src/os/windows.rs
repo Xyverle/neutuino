@@ -9,7 +9,7 @@ const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 4;
 const ENABLE_ECHO_INPUT: u32 = 4;
 const ENABLE_LINE_INPUT: u32 = 2;
 const ENABLE_PROCESSED_INPUT: u32 = 1;
-const INVALID_HANDLE_VALUE: usize = usize::MAX-1;
+const INVALID_HANDLE_VALUE: usize = usize::MAX - 1;
 
 unsafe extern "system" {
     fn GetStdHandle(nStdHandle: u32) -> usize;
@@ -43,7 +43,7 @@ pub fn is_terminal() -> bool {
         Ok(handle) => {
             let mut dwMode = 0;
             return unsafe { GetConsoleMode(handle, &mut dwMode) != 0 };
-        },
+        }
         _ => false,
     }
 }
