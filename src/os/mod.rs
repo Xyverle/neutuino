@@ -13,7 +13,7 @@ use unix as os;
 use windows as os;
 
 /// Checks if stdout is a terminal
-pub use os::istty;
+pub use os::is_terminal;
 
 /// Enables ANSI support on Windows terminals
 ///
@@ -22,13 +22,6 @@ pub use os::enable_ansi;
 
 /// Gets the size of the terminal
 pub use os::get_terminal_size;
-
-
-/// Struct representing a raw terminal
-///
-/// This was done due to weirdness in the termios API (you have to store the original state of the
-/// terminal to restore it)
-pub use os::RawTerminal;
 
 /// Enables raw mode
 ///
