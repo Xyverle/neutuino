@@ -37,30 +37,7 @@ struct ConsoleScreenBufferInfo {
     dwMaximumWindowSizeY: u16,
 }
 
-pub struct RawTerminal { }
-
-impl RawTerminal {
-    pub fn new() -> io::Result<RawTerminal> {
-        let handle = get_std_handle(STD_INPUT_HANDLE)?;
-        let mut dwMode = 0;
-        get_console_mode(handle, &raw mut dwMode)?;
-        dwMode &= !(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
-        set_console_mode(handle, &raw mut dwMode)?;
-        Ok(RawTerminal { })
-    }
-}
-
-impl Drop for RawTerminal {
-    fn drop(&mut self) {
-        let handle = get_std_handle(STD_INPUT_HANDLE).unwrap();
-        let mut dwMode = 0;
-        _ = get_console_mode(handle, &raw mut dwMode);
-        dwMode |= ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
-        _ = set_console_mode(handle, &raw mut dwMode);
-    }
-}
-
-pub fn istty() -> bool {
+pub fn is_terminal() -> bool {
     let handle = get_std_handle(STD_OUTPUT_HANDLE);
     match handle {
         Ok(handle) => {
