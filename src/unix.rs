@@ -57,12 +57,12 @@ pub fn enable_ansi() -> io::Result<()> {
     Ok(())
 }
 
-pub fn get_terminal_size() -> io::Result<(c_ushort, c_ushort)> {
+pub fn get_terminal_size() -> io::Result<(u16, u16)> {
     let mut winsize = unsafe { std::mem::zeroed::<Winsize>() };
     let ioctl_result = unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, (&raw mut winsize).cast::<u8>()) };
 
     if ioctl_result == 0 {
-        Ok((winsize.col, winsize.row))
+        Ok((winsize.col as u16, winsize.row as u16))
     } else {
         Err(io::Error::last_os_error())
     }

@@ -36,7 +36,8 @@ struct ConsoleScreenBufferInfo {
     dwMaximumWindowSizeY: u16,
 }
 
-#[must_use] pub fn is_terminal() -> bool {
+#[must_use]
+pub fn is_terminal() -> bool {
     let handle = get_std_handle(STD_OUTPUT_HANDLE);
     match handle {
         Ok(handle) => {
