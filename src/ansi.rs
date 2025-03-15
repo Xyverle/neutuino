@@ -1,189 +1,195 @@
-use std::fmt;
+//! Collection of ANSI escape code consts/functions
+//!
+//! These should work on *most* terminals (i.e. Xterm compatible terminals)
+//!
+//! For these to work on Windows you need to run the enable_ansi function in the os module
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CursorMovement {
-    Move(u16, u16),
-    Up(u16),
-    Down(u16),
-    Right(u16),
-    Left(u16),
-    Save,
-    Restore,
+/// Sets the terminal to an arbitrary 12-bit/truecolor color
+pub fn rgb_color_code(red: u8, green: u8, blue: u8) -> String {
+    format!("\x1b[38;2;{red};{green};{blue}m")
 }
 
-impl fmt::Display for CursorMovement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match *self {
-            Self::Move(x, y) => &format!("[{x};{y}H"),
-            Self::Up(n) => &format!("[{n}A"),
-            Self::Down(n) => &format!("[{n}B"),
-            Self::Left(n) => &format!("[{n}D"),
-            Self::Right(n) => &format!("[{n}C"),
-            Self::Save => "7",
-            Self::Restore => "8",
-        };
-        write!(f, "\x1b{str}")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CursorShape {
-    Reset,
-    BlockBlinking,
-    BlockSteady,
-    UnderlineBlinking,
-    UnderlineSteady,
-    BarBlinking,
-    BarSteady,
-}
-
-impl fmt::Display for CursorShape {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match *self {
-            Self::Reset => "0",
-            Self::BlockBlinking => "1",
-            Self::BlockSteady => "2",
-            Self::UnderlineBlinking => "3",
-            Self::UnderlineSteady => "4",
-            Self::BarBlinking => "5",
-            Self::BarSteady => "6",
-        };
-        write!(f, "\x1b[{str} q")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Erase {
-    Screen,
-    Line,
-    CursorToScreenStart,
-    CursorToScreenEnd,
-    CursorToLineStart,
-    CursorToLineEnd,
-}
-
-impl fmt::Display for Erase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match *self {
-            Self::Screen => "2J",
-            Self::Line => "2K",
-            Self::CursorToScreenStart => "1J",
-            Self::CursorToScreenEnd => "0J",
-            Self::CursorToLineStart => "1K",
-            Self::CursorToLineEnd => "0K",
-        };
-        write!(f, "\x1b[{str}")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Style {
-    ResetAll,
-    Bold,
-    Dim,
-    Italic,
-    Underline,
-    Blinking,
-    Reverse,
-    Hidden,
-    Strikethrough,
-}
-
-impl fmt::Display for Style {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match *self {
-            Self::ResetAll => "0",
-            Self::Bold => "1",
-            Self::Dim => "2",
-            Self::Italic => "3",
-            Self::Underline => "4",
-            Self::Blinking => "5",
-            Self::Reverse => "7",
-            Self::Hidden => "8",
-            Self::Strikethrough => "9",
-        };
-        write!(f, "\x1b[{str}m")
-    }
-}
-
-impl fmt::LowerHex for Style {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match *self {
-            Self::ResetAll => "0",
-            Self::Bold | Self::Dim => "22",
-            Self::Italic => "23",
-            Self::Underline => "24",
-            Self::Blinking => "25",
-            Self::Reverse => "27",
-            Self::Hidden => "28",
-            Self::Strikethrough => "29",
-        };
-        write!(f, "\x1b[{str}m")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Color {
-    Rgb(u8, u8, u8),
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Magenta,
-    Cyan,
-    White,
-    Default,
-}
-
-impl fmt::Display for Color {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match *self {
-            Self::Rgb(r, g, b) => &format!("38;2;{r};{g};{b}"),
-            Self::Black => "30",
-            Self::Red => "31",
-            Self::Green => "32",
-            Self::Yellow => "33",
-            Self::Blue => "34",
-            Self::Magenta => "35",
-            Self::Cyan => "36",
-            Self::White => "37",
-            Self::Default => "39",
-        };
-        write!(f, "\x1b[{str}m")
-    }
-}
-
-impl fmt::Binary for Color {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match *self {
-            Self::Rgb(r, g, b) => &format!("48;2;{r};{g};{b}"),
-            Self::Black => "40",
-            Self::Red => "41",
-            Self::Green => "42",
-            Self::Yellow => "43",
-            Self::Blue => "44",
-            Self::Magenta => "45",
-            Self::Cyan => "46",
-            Self::White => "47",
-            Self::Default => "49",
-        };
-        write!(f, "\x1b[{str}m")
-    }
-}
-
-pub fn enter_alternate_screen() {
-    println!("\x1b[?1049h");
-}
-
-pub fn exit_alternate_screen() {
-    println!("\x1b[?1049l");
-}
-
-pub fn set_window_title(title: &str) {
+/// Sets the title of the window
+///
+/// The title must be only in ASCII characters or **weird** things will happen
+///
+/// Panics:
+///
+/// When the title is more than 255 characters
+pub fn set_window_title(title: String) -> String {
     assert!(
         title.len() <= 255,
         "Title length longer than maximum of 255"
     );
-    println!("\x1b]0;{title}\x1b\x5c");
+    format!("\x1b]0;{title}\x1b\x5c")
 }
+
+/// Moves the cursor up {num} characters
+pub fn move_cursor_up(num: u16) -> String {
+    format!("\x1b[{num}A")
+}
+
+/// Moves the cursor down {num} characters
+pub fn move_cursor_down(num: u16) -> String {
+    format!("\x1b[{num}B")
+}
+
+/// Moves the cursor right {num} characters
+pub fn move_cursor_right(num: u16) -> String {
+    format!("\x1b[{num}C")
+}
+
+/// Moves the cursor left {num} characters
+pub fn move_cursor_left(num: u16) -> String {
+    format!("\x1b[{num}A")
+}
+
+/// Moves the cursor to {row}
+///
+/// Origin is 1, 1
+pub fn move_cursor_to_row(row: u16) -> String {
+    format!("\x1b[{row}d")
+}
+
+/// Moves the cursor to {column}
+///
+/// Origin is 1, 1
+pub fn move_cursor_to_column(column: u16) -> String {
+    format!("\x1b[{column}G")
+}
+
+/// Moves the cursor to Position {x}, {y}
+///
+/// Origin is 1, 1
+pub fn move_cursor_to_position(column: u16, line: u16) -> String {
+    format!("\x1b[{line};{column}H")
+}
+
+/// Saves the current cursor position
+pub const CURSOR_POSITION_SAVE: &str = "\x1b7";
+/// Restores the saved cursor position
+pub const CURSOR_POSITION_RESTORE: &str = "\x1b8";
+
+/// Enters the alternate screen
+///
+/// The alternate screen is a blank screen that won't interrupt the main screen (e.g. vi)
+pub const ALT_SCREEN_ENTER: &str = "\x1b[?1049h";
+/// Exits the alternate screen
+///
+/// The alternate screen is a blank screen that won't interrupt the main screen (e.g. vi)
+pub const ALT_SCREEN_EXIT: &str = "\x1b[?1049l";
+
+/// Sets the cursor shape to the user-specified default
+pub const SHAPE_RESET: &str = "\x1b[0q";
+/// Sets the cursor shape to a blinking block
+pub const SHAPE_BLOCK_BLINKING: &str = "\x1b[1q";
+/// Sets the cursor shape to a steady block
+pub const SHAPE_BLOCK_STEADY: &str = "\x1b[2q";
+/// Sets the cursor shape to a blinking underline
+pub const SHAPE_UNDERLINE_BLINKING: &str = "\x1b[3q";
+/// Sets the cursor shape to a steady underline
+pub const SHAPE_UNDERLINE_STEADY: &str = "\x1b[4q";
+/// Sets the cursor shape to a blinking bar
+pub const SHAPE_BAR_BLINKING: &str = "\x1b[5q";
+/// Sets the cursor shape to a steady bar
+pub const SHAPE_BAR_STEADY: &str = "\x1b[6q";
+
+/// Erases the entire screen while leaving cursor in place
+pub const ERASE_SCREEN: &str = "\x1b[2J";
+/// Erases the line the cursor is on while leaving cursor in place
+pub const ERASE_LINE: &str = "\x1b[2K";
+/// Erases from the screen start to the cursor while leaving cursor in place
+pub const ERASE_CURSOR_TO_SCREEN_START: &str = "\x1b[1J";
+/// Erases from the cursor to the screen end while leaving cursor in place
+pub const ERASE_CURSOR_TO_SCREEN_END: &str = "\x1b[0J";
+/// Erases from the line start to the cursor while leaving cursor in place
+pub const ERASE_CURSOR_TO_LINE_START: &str = "\x1b[1K";
+/// Erases from the cursor to the line end while leaving cursor in place
+pub const ERASE_CURSOR_TO_LINE_END: &str = "\x1b[0K";
+
+/// Makes characters sent to the screen bold
+pub const STYLE_BOLD: &str = "\x1b[1m";
+/// Makes characters sent to the screen dim
+pub const STYLE_DIM: &str = "\x1b[2m";
+/// Makes characters sent to the screen italic
+pub const STYLE_ITALIC: &str = "\x1b[3m";
+/// Makes characters sent to the screen underlined
+///
+/// This is less commonly supported than other styles
+pub const STYLE_UNDERLINE: &str = "\x1b[4m";
+/// Makes characters sent to the screen blinking
+///
+/// This is less commonly supported than other styles
+pub const STYLE_BLINKING: &str = "\x1b[5m";
+/// Makes characters sent to the screen reversed
+///
+/// This is less commonly supported than other styles
+pub const STYLE_REVERSE: &str = "\x1b[7m";
+/// Makes characters sent to the screen hidden
+///
+/// This is less commonly supported than other styles
+pub const STYLE_HIDDEN: &str = "\x1b[8m";
+/// Makes characters sent to the screen struckthrough
+///
+/// This is less commonly supported than other styles
+pub const STYLE_STRIKETHROUGH: &str = "\x1b[9m";
+
+/// Resets all styles and colors
+pub const STYLE_RESET: &str = "\x1b[0m";
+/// Resets bold
+///
+/// Often bold & dim's implementations are overlapping and will likely unset both
+pub const STYLE_RESET_BOLD: &str = "\x1b[21m";
+/// Resets dim
+///
+/// Often bold & dim's implementations are overlapping and will likely unset both
+pub const STYLE_RESET_DIM: &str = "\x1b[22m";
+/// Reset italic
+pub const STYLE_RESET_ITALIC: &str = "\x1b[23m";
+/// Reset underline
+pub const STYLE_RESET_UNDERLINE: &str = "\x1b[24m";
+/// Reset blinking
+pub const STYLE_RESET_BLINKING: &str = "\x1b[25m";
+/// Reset reverse
+pub const STYLE_RESET_REVERSE: &str = "\x1b[27m";
+/// Reset hidden
+pub const STYLE_RESET_HIDDEN: &str = "\x1b[28m";
+/// Reset strikethrough
+pub const STYLE_RESET_STRIKETHROUGH: &str = "\x1b[29m";
+
+/// Makes characters sent to the screen have a black foreground
+pub const COLOR_BLACK_FG: &str = "\x1b[30m";
+/// Makes characters sent to the screen have a black background
+pub const COLOR_BLACK_BG: &str = "\x1b[40m";
+/// Makes characters sent to the screen have a red foreground
+pub const COLOR_RED_FG: &str = "\x1b[31m";
+/// Makes characters sent to the screen have a red background
+pub const COLOR_RED_BG: &str = "\x1b[41m";
+/// Makes characters sent to the screen have a green foreground
+pub const COLOR_GREEN_FG: &str = "\x1b[32m";
+/// Makes characters sent to the screen have a green background
+pub const COLOR_GREEN_BG: &str = "\x1b[42m";
+/// Makes characters sent to the screen have a yellow foreground
+pub const COLOR_YELLOW_FG: &str = "\x1b[33m";
+/// Makes characters sent to the screen have a yellow background
+pub const COLOR_YELLOW_BG: &str = "\x1b[43m";
+/// Makes characters sent to the screen have a blue foreground
+pub const COLOR_BLUE_FG: &str = "\x1b[34m";
+/// Makes characters sent to the screen have a blue background
+pub const COLOR_BLUE_BG: &str = "\x1b[44m";
+/// Makes characters sent to the screen have a magenta foreground
+pub const COLOR_MAGENTA_FG: &str = "\x1b[35m";
+/// Makes characters sent to the screen have a magenta background
+pub const COLOR_MAGENTA_BG: &str = "\x1b[45m";
+/// Makes characters sent to the screen have a cyan foreground
+pub const COLOR_CYAN_FG: &str = "\x1b[36m";
+/// Makes characters sent to the screen have a cyan background
+pub const COLOR_CYAN_BG: &str = "\x1b[46m";
+/// Makes characters sent to the screen have a white foreground
+pub const COLOR_WHITE_FG: &str = "\x1b[37m";
+/// Makes characters sent to the screen have a white background
+pub const COLOR_WHITE_BG: &str = "\x1b[47m";
+/// Makes characters sent to the screen have a default foreground
+pub const COLOR_DEFAULT_FG: &str = "\x1b[39m";
+/// Makes characters sent to the screen have a default background
+pub const COLOR_DEFAULT_BG: &str = "\x1b[49m";

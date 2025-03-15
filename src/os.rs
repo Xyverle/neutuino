@@ -1,11 +1,13 @@
 #[cfg(unix)]
-#[path = "unix.rs"] mod unix;
+#[path = "unix.rs"]
+mod unix;
 
 #[cfg(unix)]
 use unix as os;
 
 #[cfg(windows)]
-#[path = "windows.rs"] mod windows;
+#[path = "windows.rs"]
+mod windows;
 
 #[cfg(windows)]
 use windows as os;
@@ -15,10 +17,12 @@ pub use os::is_terminal;
 
 /// Enables ANSI support on Windows terminals
 ///
-/// ANSI is on by default on *nix machines but still exists for ease of use
+/// ANSI is on by default on *nix machines but still exists on them for simpler usage
 pub use os::enable_ansi;
 
 /// Gets the size of the terminal
+///
+/// Returns in (width, height) format
 pub use os::get_terminal_size;
 
 /// Enables raw mode
