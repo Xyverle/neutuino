@@ -181,6 +181,9 @@ pub fn exit_alternate_screen() {
 }
 
 pub fn set_window_title(title: &str) {
-    assert!(title.len() <= 255, "Title length longer than maximum of 255");
+    assert!(
+        title.len() <= 255,
+        "Title length longer than maximum of 255"
+    );
     println!("\x1b]0;{title}\x1b\x5c");
 }

@@ -1,13 +1,11 @@
-#![allow(unused_imports)]
-
 #[cfg(unix)]
-mod unix;
-
-#[cfg(windows)]
-mod windows;
+#[path = "unix.rs"] mod unix;
 
 #[cfg(unix)]
 use unix as os;
+
+#[cfg(windows)]
+#[path = "windows.rs"] mod windows;
 
 #[cfg(windows)]
 use windows as os;
