@@ -2,7 +2,6 @@ use std::ffi::{c_int, c_uint, c_ulong, c_ushort};
 use std::io;
 
 unsafe extern "C" {
-    fn isatty(fd: c_int) -> c_int;
     fn ioctl(fd: c_int, request: c_ulong, argp: *mut u8) -> c_int;
     fn tcgetattr(fd: c_int, termios_p: *mut Termios) -> c_int;
     fn tcsetattr(fd: c_int, optional_actions: c_int, termios: *mut Termios) -> c_int;
@@ -44,12 +43,6 @@ struct Termios {
     cflag: c_uint,
     lflag: c_uint,
     cc: [u8; NCCS],
-}
-
-/// Checks if stdout is a terminal
-#[must_use]
-pub fn is_terminal() -> bool {
-    unsafe { isatty(1) != 0 }
 }
 
 /// Enables ANSI support on Windows terminals

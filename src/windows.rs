@@ -36,19 +36,6 @@ struct ConsoleScreenBufferInfo {
     dwMaximumWindowSizeY: u16,
 }
 
-/// Checks if stdout is a terminal
-#[must_use]
-pub fn is_terminal() -> bool {
-    let handle = get_std_handle(STD_OUTPUT_HANDLE);
-    match handle {
-        Ok(handle) => {
-            let mut dwMode = 0;
-            unsafe { GetConsoleMode(handle, &mut dwMode) != 0 }
-        }
-        _ => false,
-    }
-}
-
 /// Enables ANSI support on Windows terminals
 ///
 /// ANSI is on by default on *nix machines but still exists on them for simpler usage
