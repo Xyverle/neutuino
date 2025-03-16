@@ -13,16 +13,9 @@ pub fn rgb_color_code(red: u8, green: u8, blue: u8) -> String {
 /// Sets the title of the window
 ///
 /// The title must be only in ASCII characters or **weird** things will happen
-///
-/// # Panics
-///
-/// When the title is more than 255 characters
 #[must_use]
-pub fn set_window_title(title: &str) -> String {
-    assert!(
-        title.len() <= 255,
-        "Title length longer than maximum of 255"
-    );
+pub fn set_window_title(title: [u8; 255]) -> String {
+    let title = String::from_utf8_lossy(&title);
     format!("\x1b]0;{title}\x1b\x5c")
 }
 
@@ -52,42 +45,26 @@ pub fn move_cursor_left(num: u16) -> String {
 
 /// Moves the cursor to {row}
 ///
-/// Origin is 1, 1
+/// Origin is 0, 0
 #[must_use]
 pub fn move_cursor_to_row(line: u16) -> String {
-    debug_assert!(
-        line != 0,
-        "Tried to go to line 0, when position is (1, 1)-based"
-    );
-    format!("\x1b[{line}d")
+    format!("\x1b[{}d", line.saturating_add(1))
 }
 
 /// Moves the cursor to {column}
 ///
-/// Origin is 1, 1
+/// Origin is 0, 0
 #[must_use]
 pub fn move_cursor_to_column(column: u16) -> String {
-    debug_assert!(
-        column != 0,
-        "Tried to go to column 0, when position is (1, 1)-based"
-    );
-    format!("\x1b[{column}G")
+    format!("\x1b[{}G", column.saturating_add(1))
 }
 
 /// Moves the cursor to Position {x}, {y}
 ///
-/// Origin is 1, 1
+/// Origin is 0, 0
 #[must_use]
 pub fn move_cursor_to_position(column: u16, line: u16) -> String {
-    debug_assert!(
-        line != 0,
-        "Tried to go to line 0, when position is (1, 1)-based"
-    );
-    debug_assert!(
-        column != 0,
-        "Tried to go to column 0, when position is (1, 1)-based"
-    );
-    format!("\x1b[{line};{column}H")
+    format!("\x1b[{};{}H", line.saturating_add(1), column.saturating_add(1))
 }
 
 /// Saves the current cursor position
