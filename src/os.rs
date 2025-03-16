@@ -1,36 +1,18 @@
+//! Collection of functions that help control the terminal
+//!
+//! These are built to work at least on these platforms:
+//! Windows, Linux, and Mac, but are likely to work on more
+
 #[cfg(unix)]
 #[path = "unix.rs"]
 mod unix;
 
 #[cfg(unix)]
-use unix as os;
+pub use unix::*;
 
 #[cfg(windows)]
 #[path = "windows.rs"]
-mod windows;
+mod unix;
 
 #[cfg(windows)]
-use windows as os;
-
-/// Checks if stdout is a terminal
-pub use os::is_terminal;
-
-/// Enables ANSI support on Windows terminals
-///
-/// ANSI is on by default on *nix machines but still exists on them for simpler usage
-pub use os::enable_ansi;
-
-/// Gets the size of the terminal
-///
-/// Returns in (width, height) format
-pub use os::get_terminal_size;
-
-/// Enables raw mode
-///
-/// Disables input echoing, line feeding, etc.
-pub use os::enable_raw_mode;
-
-/// Disables raw mode
-///
-/// Enables input echoing, line feeding, etc.
-pub use os::disable_raw_mode;
+pub use windows::*;

@@ -46,17 +46,38 @@ struct Termios {
     cc: [u8; NCCS],
 }
 
+/// Checks if stdout is a terminal
 #[must_use]
 pub fn is_terminal() -> bool {
     unsafe { isatty(1) != 0 }
 }
 
+/// Enables ANSI support on Windows terminals
+///
+/// ANSI is on by default on *nix machines but still exists on them for simpler usage
+///
+/// # Errors
+///
+/// Never on *nix
+///
+/// If There is no stdout,
+/// if stdout isn't a TTY, or
+/// if it cannot change terminal properties on Windows
 pub fn enable_ansi() -> io::Result<()> {
     // ANSI is on by default on unix platforms
     // This is here for compatibility with the windows version of this API
     Ok(())
 }
 
+/// Gets the size of the terminal
+///
+/// Returns in (width, height) format
+///
+/// # Errors
+///
+/// If there is no stdout,
+/// if stdout isn't a TTY, or
+/// if it fails to retrieve the terminal size
 pub fn get_terminal_size() -> io::Result<(u16, u16)> {
     let mut winsize = unsafe { std::mem::zeroed::<Winsize>() };
     let ioctl_result = unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, (&raw mut winsize).cast::<u8>()) };
@@ -68,6 +89,15 @@ pub fn get_terminal_size() -> io::Result<(u16, u16)> {
     }
 }
 
+/// Enables raw mode
+///
+/// Disables input echoing, line feeding, etc.
+///
+/// # Errors
+///
+/// If there is no stdout,
+/// if stdout isn't a TTY, or
+/// if it fails to get or set terminal settings
 pub fn enable_raw_mode() -> io::Result<()> {
     let mut termios = unsafe { std::mem::zeroed::<Termios>() };
     get_attributes(STDIN_FILENO, &mut termios)?;
@@ -76,6 +106,15 @@ pub fn enable_raw_mode() -> io::Result<()> {
     Ok(())
 }
 
+/// Disables raw mode
+///
+/// Enables input echoing, line feeding, etc.
+///
+/// # Errors
+///
+/// If there is no stdout,
+/// if stdout isn't a TTY, or
+/// if it fails to get or set terminal settings
 pub fn disable_raw_mode() -> io::Result<()> {
     let mut termios = unsafe { std::mem::zeroed::<Termios>() };
     get_attributes(STDIN_FILENO, &mut termios)?;
