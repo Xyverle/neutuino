@@ -1,14 +1,12 @@
-#![allow(non_snake_case)]
-
 use std::io;
 
 unsafe extern "system" {
-    fn GetStdHandle(nStdHandle: u32) -> usize;
-    fn GetConsoleMode(hConsoleHandle: usize, dwMode: *mut u32) -> u32;
-    fn SetConsoleMode(hConsoleHandle: usize, dwMode: *mut u32) -> u32;
+    fn GetStdHandle(std_handle: u32) -> usize;
+    fn GetConsoleMode(console_handle: usize, mode: *mut u32) -> u32;
+    fn SetConsoleMode(console_handle: usize, mode: *mut u32) -> u32;
     fn GetConsoleScreenBufferInfo(
-        hConsoleOutput: usize,
-        lpConsoleScreenBufferInfo: *mut ConsoleScreenBufferInfo,
+        console_output: usize,
+        console_screen_buffer_info: *mut ConsoleScreenBufferInfo,
     ) -> u32;
 }
 
@@ -23,17 +21,9 @@ const INVALID_HANDLE_VALUE: usize = usize::MAX - 1;
 #[repr(C)]
 #[derive(Default)]
 struct ConsoleScreenBufferInfo {
-    dwSizeX: u16,
-    dwSizeY: u16,
-    dwCursorPositionX: u16,
-    dwCursorPositionY: u16,
-    wAttributes: u16,
-    srWindowLeft: u16,
-    srWindowTop: u16,
-    srWindowRight: u16,
-    srWindowBottom: u16,
-    dwMaximumWindowSizeX: u16,
-    dwMaximumWindowSizeY: u16,
+    x: u16,
+    y: u16,
+    _unused: [u16; 9],
 }
 
 /// Enables ANSI support on Windows terminals
@@ -49,10 +39,10 @@ struct ConsoleScreenBufferInfo {
 /// if it cannot change terminal properties
 pub fn enable_ansi() -> io::Result<()> {
     let handle = get_std_handle(STD_OUTPUT_HANDLE)?;
-    let mut dwMode = 0;
-    get_console_mode(handle, &raw mut dwMode)?;
-    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    set_console_mode(handle, &raw mut dwMode)?;
+    let mut mode = 0;
+    get_console_mode(handle, &raw mut mode)?;
+    mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    set_console_mode(handle, &raw mut mode)?;
     Ok(())
 }
 
@@ -69,8 +59,8 @@ pub fn get_terminal_size() -> io::Result<(u16, u16)> {
     let handle = get_std_handle(STD_OUTPUT_HANDLE)?;
     let mut csbi = ConsoleScreenBufferInfo::default();
     if unsafe { GetConsoleScreenBufferInfo(handle, &mut csbi) != 0 } {
-        let width = csbi.dwSizeX;
-        let height = csbi.dwSizeY;
+        let width = csbi.x;
+        let height = csbi.y;
         return Ok((width, height));
     }
     Err(io::Error::last_os_error())
@@ -87,10 +77,10 @@ pub fn get_terminal_size() -> io::Result<(u16, u16)> {
 /// if it fails to get or set terminal settings
 pub fn enable_raw_mode() -> io::Result<()> {
     let handle = get_std_handle(STD_INPUT_HANDLE)?;
-    let mut dwMode = 0;
-    get_console_mode(handle, &raw mut dwMode)?;
-    dwMode &= !(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
-    set_console_mode(handle, &raw mut dwMode)?;
+    let mut mode = 0;
+    get_console_mode(handle, &raw mut mode)?;
+    mode &= !(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+    set_console_mode(handle, &raw mut mode)?;
     Ok(())
 }
 
@@ -105,10 +95,10 @@ pub fn enable_raw_mode() -> io::Result<()> {
 /// if it fails to get or set terminal settings
 pub fn disable_raw_mode() -> io::Result<()> {
     let handle = get_std_handle(STD_INPUT_HANDLE)?;
-    let mut dwMode = 0;
-    get_console_mode(handle, &raw mut dwMode)?;
-    dwMode |= ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
-    set_console_mode(handle, &raw mut dwMode)?;
+    let mut mode = 0;
+    get_console_mode(handle, &raw mut mode)?;
+    mode |= ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+    set_console_mode(handle, &raw mut mode)?;
     Ok(())
 }
 
@@ -121,16 +111,16 @@ fn get_std_handle(handle: u32) -> io::Result<usize> {
     }
 }
 
-fn set_console_mode(handle: usize, dwMode: *mut u32) -> io::Result<()> {
-    if unsafe { SetConsoleMode(handle, dwMode) == 0 } {
+fn set_console_mode(handle: usize, mode: *mut u32) -> io::Result<()> {
+    if unsafe { SetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {
         Ok(())
     }
 }
 
-fn get_console_mode(handle: usize, dwMode: *mut u32) -> io::Result<()> {
-    if unsafe { GetConsoleMode(handle, dwMode) == 0 } {
+fn get_console_mode(handle: usize, mode: *mut u32) -> io::Result<()> {
+    if unsafe { GetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {
         Ok(())
