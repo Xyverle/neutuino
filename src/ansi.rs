@@ -2,9 +2,10 @@
 //!
 //! These should work on *most* terminals (i.e. Xterm compatible terminals)
 //!
-//! For these to work on Windows you need to run the enable_ansi function in the os module
+//! For these to work on Windows you need to run the `enable_ansi` function in the os module
 
 /// Sets the terminal to an arbitrary 12-bit/truecolor color
+#[must_use]
 pub fn rgb_color_code(red: u8, green: u8, blue: u8) -> String {
     format!("\x1b[38;2;{red};{green};{blue}m")
 }
@@ -13,10 +14,11 @@ pub fn rgb_color_code(red: u8, green: u8, blue: u8) -> String {
 ///
 /// The title must be only in ASCII characters or **weird** things will happen
 ///
-/// Panics:
+/// # Panics
 ///
 /// When the title is more than 255 characters
-pub fn set_window_title(title: String) -> String {
+#[must_use]
+pub fn set_window_title(title: &str) -> String {
     assert!(
         title.len() <= 255,
         "Title length longer than maximum of 255"
@@ -25,21 +27,25 @@ pub fn set_window_title(title: String) -> String {
 }
 
 /// Moves the cursor up {num} characters
+#[must_use]
 pub fn move_cursor_up(num: u16) -> String {
     format!("\x1b[{num}A")
 }
 
 /// Moves the cursor down {num} characters
+#[must_use]
 pub fn move_cursor_down(num: u16) -> String {
     format!("\x1b[{num}B")
 }
 
 /// Moves the cursor right {num} characters
+#[must_use]
 pub fn move_cursor_right(num: u16) -> String {
     format!("\x1b[{num}C")
 }
 
 /// Moves the cursor left {num} characters
+#[must_use]
 pub fn move_cursor_left(num: u16) -> String {
     format!("\x1b[{num}A")
 }
@@ -47,21 +53,40 @@ pub fn move_cursor_left(num: u16) -> String {
 /// Moves the cursor to {row}
 ///
 /// Origin is 1, 1
-pub fn move_cursor_to_row(row: u16) -> String {
-    format!("\x1b[{row}d")
+#[must_use]
+pub fn move_cursor_to_row(line: u16) -> String {
+    debug_assert!(
+        line != 0,
+        "Tried to go to line 0, when position is (1, 1)-based"
+    );
+    format!("\x1b[{line}d")
 }
 
 /// Moves the cursor to {column}
 ///
 /// Origin is 1, 1
+#[must_use]
 pub fn move_cursor_to_column(column: u16) -> String {
+    debug_assert!(
+        column != 0,
+        "Tried to go to column 0, when position is (1, 1)-based"
+    );
     format!("\x1b[{column}G")
 }
 
 /// Moves the cursor to Position {x}, {y}
 ///
 /// Origin is 1, 1
+#[must_use]
 pub fn move_cursor_to_position(column: u16, line: u16) -> String {
+    debug_assert!(
+        line != 0,
+        "Tried to go to line 0, when position is (1, 1)-based"
+    );
+    debug_assert!(
+        column != 0,
+        "Tried to go to column 0, when position is (1, 1)-based"
+    );
     format!("\x1b[{line};{column}H")
 }
 

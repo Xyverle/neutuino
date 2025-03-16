@@ -1,3 +1,7 @@
+//! Various input functions, structs, etc.
+//!
+//! Very incomplete currently
+
 use std::io::{self, Read};
 use std::sync::mpsc;
 use std::thread;
@@ -6,6 +10,8 @@ use std::thread;
 ///
 /// This acts as any other stream, with the exception that reading from it won't block. Instead,
 /// the buffer will only be partially updated based on how much the internal buffer holds.
+///
+/// Taken from the Termion crate
 pub struct AsyncReader {
     recv: mpsc::Receiver<io::Result<u8>>,
 }
