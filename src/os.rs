@@ -12,7 +12,7 @@ pub use unix::*;
 
 #[cfg(windows)]
 #[path = "windows.rs"]
-mod unix;
+mod windows;
 
 #[cfg(windows)]
 pub use windows::*;
