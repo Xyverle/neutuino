@@ -6,8 +6,14 @@
 
 /// Sets the terminal to an arbitrary 12-bit/truecolor color
 #[must_use]
-pub fn rgb_color_code(red: u8, green: u8, blue: u8) -> String {
+pub fn rgb_color_code_fg(red: u8, green: u8, blue: u8) -> String {
     format!("\x1b[38;2;{red};{green};{blue}m")
+}
+
+/// Sets the terminal to an arbitrary 12-bit/truecolor color
+#[must_use]
+pub fn rgb_color_code_bg(red: u8, green: u8, blue: u8) -> String {
+    format!("\x1b[48;2;{red};{green};{blue}m")
 }
 
 /// Sets the title of the window
