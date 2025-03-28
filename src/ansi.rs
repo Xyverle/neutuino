@@ -14,9 +14,12 @@ pub fn rgb_color_code(red: u8, green: u8, blue: u8) -> String {
 ///
 /// The title must be only in ASCII characters or **weird** things will happen
 #[must_use]
-pub fn set_window_title(title: [u8; 255]) -> String {
-    let title = String::from_utf8_lossy(&title);
-    format!("\x1b]0;{title}\x1b\x5c")
+pub fn set_window_title<T: Into<String>>(title: T) -> Option<String> {
+    let title = title.into();
+    if title.len() > 255 {
+        return None;
+    }
+    Some(format!("\x1b]0;{title}\x1b\x5c"))
 }
 
 /// Moves the cursor up {num} characters
@@ -66,6 +69,16 @@ pub fn move_cursor_to_column(column: u16) -> String {
 pub fn move_cursor_to_position(column: u16, line: u16) -> String {
     format!("\x1b[{};{}H", line.saturating_add(1), column.saturating_add(1))
 }
+
+/// Sends input when terminal is in focus
+pub const FOCUS_REPORTING_ENABLE: &str = "\x1b[?1004h";
+/// Stops sending input when terminal is in focus
+pub const FOCUS_REPORTING_DISABLE: &str = "\x1b[?1004l";
+
+/// Makes all pasted text treated differently
+pub const BRACKETED_PASTE_ENABLE: &str = "\x1b[?2004h";
+/// Disables bracketed paste
+pub const BRACKETED_PASTE_DISABLE: &str = "\x1b[?2004l";
 
 /// Saves the current cursor position
 pub const CURSOR_POSITION_SAVE: &str = "\x1b7";

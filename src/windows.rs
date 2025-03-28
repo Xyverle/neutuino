@@ -26,6 +26,43 @@ struct ConsoleScreenBufferInfo {
     _unused: [u16; 9],
 }
 
+/// This struct represents a raw terminal
+///
+/// This struct will automatically enable raw mode when it is created
+/// and disable raw mode when it is destructed
+///
+/// This insures that you never exit with a terminal still in raw mode which is problematic for
+/// users
+pub struct RawTerminal; 
+
+impl RawTerminal {
+    /// This constructs a terminal, automatically making it raw
+    ///
+    /// # Errors
+    ///
+    /// If there is no stdin,
+    /// stdin is not a tty,
+    /// if it fails to change terminal settings 
+    pub fn new() -> io::Result<Self> {
+        let handle = get_std_handle(STD_INPUT_HANDLE)?;
+        let mut mode = 0;
+        get_console_mode(handle, &mut mode)?;
+        mode &= !(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+        set_console_mode(handle, &mut mode)?;
+        Ok(Self)
+    }
+}
+
+impl Drop for RawTerminal {
+    fn drop(&mut self) {
+        let handle = get_std_handle(STD_INPUT_HANDLE).expect("Failed to disable terminal raw mode");
+        let mut mode = 0;
+        get_console_mode(handle, &mut mode).expect("Failed to disable terminal raw mode");
+        mode |= ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+        set_console_mode(handle, &mut mode).expect("Failed to disable terminal raw mode");
+    }
+}
+
 /// Enables ANSI support on Windows terminals
 ///
 /// ANSI is on by default on *nix machines but still exists on them for simpler usage
@@ -40,9 +77,9 @@ struct ConsoleScreenBufferInfo {
 pub fn enable_ansi() -> io::Result<()> {
     let handle = get_std_handle(STD_OUTPUT_HANDLE)?;
     let mut mode = 0;
-    get_console_mode(handle, &raw mut mode)?;
+    get_console_mode(handle, &mut mode)?;
     mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    set_console_mode(handle, &raw mut mode)?;
+    set_console_mode(handle, &mut mode)?;
     Ok(())
 }
 
@@ -66,42 +103,6 @@ pub fn get_terminal_size() -> io::Result<(u16, u16)> {
     Err(io::Error::last_os_error())
 }
 
-/// Enables raw mode
-///
-/// Disables input echoing, line feeding, etc.
-///
-/// # Errors
-///
-/// If there is no stdout,
-/// if stdout isn't a TTY, or
-/// if it fails to get or set terminal settings
-pub fn enable_raw_mode() -> io::Result<()> {
-    let handle = get_std_handle(STD_INPUT_HANDLE)?;
-    let mut mode = 0;
-    get_console_mode(handle, &raw mut mode)?;
-    mode &= !(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
-    set_console_mode(handle, &raw mut mode)?;
-    Ok(())
-}
-
-/// Disables raw mode
-///
-/// Enables input echoing, line feeding, etc.
-///
-/// # Errors
-///
-/// If there is no stdout,
-/// if stdout isn't a TTY, or
-/// if it fails to get or set terminal settings
-pub fn disable_raw_mode() -> io::Result<()> {
-    let handle = get_std_handle(STD_INPUT_HANDLE)?;
-    let mut mode = 0;
-    get_console_mode(handle, &raw mut mode)?;
-    mode |= ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
-    set_console_mode(handle, &raw mut mode)?;
-    Ok(())
-}
-
 fn get_std_handle(handle: u32) -> io::Result<usize> {
     let handle = unsafe { GetStdHandle(handle) };
     if handle == INVALID_HANDLE_VALUE {
@@ -111,7 +112,7 @@ fn get_std_handle(handle: u32) -> io::Result<usize> {
     }
 }
 
-fn set_console_mode(handle: usize, mode: *mut u32) -> io::Result<()> {
+fn set_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
     if unsafe { SetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {
@@ -119,7 +120,7 @@ fn set_console_mode(handle: usize, mode: *mut u32) -> io::Result<()> {
     }
 }
 
-fn get_console_mode(handle: usize, mode: *mut u32) -> io::Result<()> {
+fn get_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
     if unsafe { GetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {
