@@ -1,4 +1,4 @@
-use std::ffi::{c_int, c_uint, c_ulong, c_ushort};
+use std::ffi::{c_int, c_short, c_uint, c_ulong, c_ushort};
 use std::io;
 
 unsafe extern "C" {
@@ -8,8 +8,9 @@ unsafe extern "C" {
     fn tcsetattr(fd: c_int, optional_actions: c_int, termios: *mut Termios) -> c_int;
 }
 
-const STDIN_FILENO: c_int = 0x0;
-const STDOUT_FILENO: c_int = 0x1;
+pub(crate) const STDIN_FILENO: c_int = 0x0;
+pub(crate) const STDOUT_FILENO: c_int = 0x1;
+pub(crate) const POLLIN: c_short = 0x001;
 
 #[cfg(target_os = "linux")]
 const TIOCGWINSZ: c_ulong = 0x5413;
@@ -21,6 +22,7 @@ const TIOCGWINSZ: c_ulong = 0x4008_7468;
 #[cfg(target_os = "macos")]
 const NCCS: usize = 0x14;
 
+//
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
 struct Winsize {

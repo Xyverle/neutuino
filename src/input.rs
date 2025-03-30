@@ -18,7 +18,9 @@ pub use windows_input::*;
 
 pub enum Event {
     Key(KeyEvent),
-    Mouse(MouseEvent)
+    Mouse(MouseEvent),
+    FocusGained,
+    FocusLost,
 }
 
 pub enum KeyEvent {

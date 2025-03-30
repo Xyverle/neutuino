@@ -10,8 +10,8 @@ unsafe extern "system" {
     ) -> u32;
 }
 
-const STD_INPUT_HANDLE: u32 = 0xFFFF_FFF6;
-const STD_OUTPUT_HANDLE: u32 = 0xFFFF_FFF5;
+pub(crate) const STD_INPUT_HANDLE: u32 = 0xFFFF_FFF6;
+pub(crate) const STD_OUTPUT_HANDLE: u32 = 0xFFFF_FFF5;
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 4;
 const ENABLE_ECHO_INPUT: u32 = 4;
 const ENABLE_LINE_INPUT: u32 = 2;
@@ -103,7 +103,7 @@ pub fn get_terminal_size() -> io::Result<(u16, u16)> {
     Err(io::Error::last_os_error())
 }
 
-fn get_std_handle(handle: u32) -> io::Result<usize> {
+pub(crate) fn get_std_handle(handle: u32) -> io::Result<usize> {
     let handle = unsafe { GetStdHandle(handle) };
     if handle == INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
@@ -112,7 +112,7 @@ fn get_std_handle(handle: u32) -> io::Result<usize> {
     }
 }
 
-fn set_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
+pub(crate) fn set_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
     if unsafe { SetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {
@@ -120,7 +120,7 @@ fn set_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
     }
 }
 
-fn get_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
+pub(crate) fn get_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
     if unsafe { GetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {

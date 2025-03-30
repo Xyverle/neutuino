@@ -1,14 +1,80 @@
-use crate::input::{Event, KeyEvent, MouseEvent, MouseButton};
+use crate::input::{Event, KeyEvent, MouseButton, MouseEvent};
+use crate::os::{POLLIN, STDIN_FILENO};
+use std::ffi::{c_int, c_short, c_ulong, c_void};
 use std::io;
+use std::time::Duration;
 
-pub fn try_parse_event<I>(item: u8, iter: &mut I) -> io::Result<Event>
+unsafe extern "C" {
+    fn poll(fds: *mut PollFD, nfds: c_ulong, timeout: c_int) -> c_int;
+    fn read(fd: c_int, buf: *mut c_void, count: c_ulong) -> c_short;
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+struct PollFD {
+    fd: c_int,
+    events: c_short,
+    revents: c_short,
+}
+
+struct ReadIterator {
+    fd: c_int,
+    buf: u8,
+}
+
+impl ReadIterator {
+    fn new(fd: c_int) -> Self {
+        Self { fd, buf: 0 }
+    }
+}
+
+impl Iterator for ReadIterator {
+    type Item = io::Result<u8>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let bytes_read = unsafe { read(self.fd, &raw mut self.buf as *mut c_void, 1) };
+
+        if bytes_read > 0 {
+            Some(Ok(self.buf))
+        } else if bytes_read == 0 {
+            None
+        } else {
+            Some(Err(io::Error::last_os_error()))
+        }
+    }
+}
+
+pub fn poll_input(timeout: Duration) -> Option<io::Result<Event>> {
+    let mut fds = [PollFD {
+        fd: STDIN_FILENO,
+        events: POLLIN,
+        revents: 0,
+    }];
+    let result = unsafe {
+        poll(
+            fds.as_mut_ptr(),
+            fds.len() as c_ulong,
+            timeout.as_millis() as c_int,
+        )
+    };
+    let mut read_iter = ReadIterator::new(STDIN_FILENO);
+
+    if result > 0 {
+        let item = read_iter.next()?.ok()?;
+        Some(try_parse_event(item, &mut read_iter))
+    } else if result == 0 {
+        None
+    } else {
+        Some(Err(io::Error::last_os_error()))
+    }
+}
+
+fn try_parse_event<I>(item: u8, iter: &mut I) -> io::Result<Event>
 where
     I: Iterator<Item = io::Result<u8>>,
 {
     match item {
-        b'\x1b' => {
-            try_parse_ansi_sequence(iter)
-        }
+        b'\x1b' => try_parse_ansi_sequence(iter),
         b'\n' | b'\r' => Ok(Event::Key(KeyEvent::Char('\n'))),
         b'\t' => Ok(Event::Key(KeyEvent::Tab)),
         b'\x7f' => Ok(Event::Key(KeyEvent::Backspace)),
@@ -25,10 +91,10 @@ where
 {
     let error = || io::Error::new(io::ErrorKind::InvalidData, "Input char is not valid UTF-8");
     let mut bytes = vec![c];
-    
+
     for _ in 1..=4 {
         if let Ok(string) = std::str::from_utf8(&bytes) {
-            return Ok(string.chars().next().unwrap())
+            return Ok(string.chars().next().unwrap());
         }
         bytes.push(iter.next().ok_or_else(error)??);
     }
@@ -41,15 +107,11 @@ where
 {
     let error = io::Error::new(io::ErrorKind::Other, "Could not parse event");
     match iter.next() {
-        Some(Ok(b'O')) => {
-            match iter.next() {
-                Some(Ok(val @ b'P'..=b's')) => Ok(Event::Key(KeyEvent::F(1 + val - b'P'))),
-                _ => Err(error)
-            }
-        }
-        Some(Ok(b'[')) => {
-            try_parse_csi_sequence(iter).ok_or(error)
-        }
+        Some(Ok(b'O')) => match iter.next() {
+            Some(Ok(val @ b'P'..=b's')) => Ok(Event::Key(KeyEvent::F(1 + val - b'P'))),
+            _ => Err(error),
+        },
+        Some(Ok(b'[')) => try_parse_csi_sequence(iter).ok_or(error),
         _ => Err(error),
     }
 }
@@ -59,13 +121,10 @@ where
     I: Iterator<Item = io::Result<u8>>,
 {
     match iter.next() {
-        Some(Ok(b'[')) => {
-            match iter.next() {
-                Some(Ok(val @ b'A'..=b'E')) => Some(Event::Key(KeyEvent::F(1 + val - b'A'))),
-                _ => None
-
-            }
-        }
+        Some(Ok(b'[')) => match iter.next() {
+            Some(Ok(val @ b'A'..=b'E')) => Some(Event::Key(KeyEvent::F(1 + val - b'A'))),
+            _ => None,
+        },
         Some(Ok(b'D')) => Some(Event::Key(KeyEvent::Left)),
         Some(Ok(b'C')) => Some(Event::Key(KeyEvent::Right)),
         Some(Ok(b'A')) => Some(Event::Key(KeyEvent::Up)),
@@ -73,17 +132,10 @@ where
         Some(Ok(b'H')) => Some(Event::Key(KeyEvent::Home)),
         Some(Ok(b'F')) => Some(Event::Key(KeyEvent::End)),
         Some(Ok(b'Z')) => Some(Event::Key(KeyEvent::BackTab)),
-        Some(Ok(b'M')) => {
-            try_parse_x10_mouse(iter)
-        }
-        Some(Ok(b'<')) => {
-            try_parse_xterm_mouse(iter)
-        }
-        Some(Ok(c @ b'0'..=b'9')) => {
-            try_parse_rxvt_mouse(c, iter)
-        }
-        _ => None
-
+        Some(Ok(b'M')) => try_parse_x10_mouse(iter),
+        Some(Ok(b'<')) => try_parse_xterm_mouse(iter),
+        Some(Ok(c @ b'0'..=b'9')) => try_parse_rxvt_mouse(c, iter),
+        _ => None,
     }
 }
 
@@ -92,35 +144,50 @@ where
     I: Iterator<Item = io::Result<u8>>,
 {
     let cb = iter.next()?.ok()? - 32;
-    
+
     let cx = u16::from(iter.next()?.ok()?.saturating_sub(33));
     let cy = u16::from(iter.next()?.ok()?.saturating_sub(33));
     match cb & 0x11 {
         0 => {
             if cb & 0x40 != 0 {
-                Some(Event::Mouse(MouseEvent::Press(MouseButton::WheelUp, cx, cy)))
+                Some(Event::Mouse(MouseEvent::Press(
+                    MouseButton::WheelUp,
+                    cx,
+                    cy,
+                )))
             } else {
                 Some(Event::Mouse(MouseEvent::Press(MouseButton::Left, cx, cy)))
             }
         }
         1 => {
             if cb & 0x40 != 0 {
-                Some(Event::Mouse(MouseEvent::Press(MouseButton::WheelDown, cx, cy)))
-            
+                Some(Event::Mouse(MouseEvent::Press(
+                    MouseButton::WheelDown,
+                    cx,
+                    cy,
+                )))
             } else {
                 Some(Event::Mouse(MouseEvent::Press(MouseButton::Middle, cx, cy)))
             }
         }
         2 => {
             if cb & 0x40 != 0 {
-                Some(Event::Mouse(MouseEvent::Press(MouseButton::WheelLeft, cx, cy)))
+                Some(Event::Mouse(MouseEvent::Press(
+                    MouseButton::WheelLeft,
+                    cx,
+                    cy,
+                )))
             } else {
                 Some(Event::Mouse(MouseEvent::Press(MouseButton::Right, cx, cy)))
             }
         }
         3 => {
             if cb & 0x40 != 0 {
-                Some(Event::Mouse(MouseEvent::Press(MouseButton::WheelRight, cx, cy)))
+                Some(Event::Mouse(MouseEvent::Press(
+                    MouseButton::WheelRight,
+                    cx,
+                    cy,
+                )))
             } else {
                 Some(Event::Mouse(MouseEvent::Release(cx, cy)))
             }
@@ -135,7 +202,7 @@ where
 {
     let mut buf = Vec::new();
     let mut character = iter.next()?.ok()?;
-    while !matches!(character, b'm' | b'M' ) {
+    while !matches!(character, b'm' | b'M') {
         buf.push(character);
         character = iter.next()?.ok()?;
     }
@@ -164,7 +231,7 @@ where
                 b'm' => MouseEvent::Release(cx, cy),
                 _ => return None,
             }
-        },
+        }
         32 | 3 => MouseEvent::Hold(cx, cy),
         _ => return None,
     };
