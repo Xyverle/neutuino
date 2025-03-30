@@ -48,7 +48,7 @@ struct Termios {
 /// This insures that you never exit with a terminal still in raw mode which is problematic for
 /// users
 pub struct RawTerminal {
-    orig_termios: Termios
+    orig_termios: Termios,
 }
 
 impl RawTerminal {
@@ -58,7 +58,7 @@ impl RawTerminal {
     ///
     /// If there is no stdin,
     /// stdin is not a tty,
-    /// if it fails to change terminal settings 
+    /// if it fails to change terminal settings
     pub fn new() -> io::Result<Self> {
         let mut orig_termios = Termios::default();
         get_attributes(STDIN_FILENO, &mut orig_termios)?;

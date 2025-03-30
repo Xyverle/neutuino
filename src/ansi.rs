@@ -73,7 +73,11 @@ pub fn move_cursor_to_column(column: u16) -> String {
 /// Origin is 0, 0
 #[must_use]
 pub fn move_cursor_to_position(column: u16, line: u16) -> String {
-    format!("\x1b[{};{}H", line.saturating_add(1), column.saturating_add(1))
+    format!(
+        "\x1b[{};{}H",
+        line.saturating_add(1),
+        column.saturating_add(1)
+    )
 }
 
 /// Sends input when terminal is in focus

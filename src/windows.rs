@@ -33,7 +33,7 @@ struct ConsoleScreenBufferInfo {
 ///
 /// This insures that you never exit with a terminal still in raw mode which is problematic for
 /// users
-pub struct RawTerminal; 
+pub struct RawTerminal;
 
 impl RawTerminal {
     /// This constructs a terminal, automatically making it raw
@@ -42,7 +42,7 @@ impl RawTerminal {
     ///
     /// If there is no stdin,
     /// stdin is not a tty,
-    /// if it fails to change terminal settings 
+    /// if it fails to change terminal settings
     pub fn new() -> io::Result<Self> {
         let handle = get_std_handle(STD_INPUT_HANDLE)?;
         let mut mode = 0;
