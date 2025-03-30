@@ -3,14 +3,14 @@
 //! Very incomplete currently
 
 #[cfg(unix)]
-#[path = "unix.rs"]
+#[path = "unix_input.rs"]
 mod unix_input;
 
 #[cfg(unix)]
 pub use unix_input::*;
 
 #[cfg(windows)]
-#[path = "windows.rs"]
+#[path = "windows_input.rs"]
 mod windows_input;
 
 #[cfg(windows)]
