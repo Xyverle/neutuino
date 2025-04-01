@@ -44,7 +44,7 @@ impl Iterator for ReadIterator {
     }
 }
 
-pub fn poll_input(timeout: Duration) -> Option<io::Result<Event>> {
+pub fn poll_input(timeout: Duration) -> io::Result<Event> {
     let mut fds = [PollFD {
         fd: STDIN_FILENO,
         events: POLLIN,
@@ -60,12 +60,13 @@ pub fn poll_input(timeout: Duration) -> Option<io::Result<Event>> {
     let mut read_iter = ReadIterator::new(STDIN_FILENO);
 
     if result > 0 {
-        let item = read_iter.next()?.ok()?;
-        Some(try_parse_event(item, &mut read_iter))
+        let item = read_iter.next().ok_or(io::ErrorKind::InvalidData)??;
+        try_parse_event(item, &mut read_iter)
     } else if result == 0 {
-        None
+        // The function timed out.
+        Err(io::ErrorKind::TimedOut.into())
     } else {
-        Some(Err(io::Error::last_os_error()))
+        Err(io::Error::last_os_error())
     }
 }
 
