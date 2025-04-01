@@ -64,8 +64,8 @@ unsafe extern "system" {
     ) -> u32;
 }
 
-pub fn poll_input(timeout: Duration) -> Option<io::Result<Event>> {
-    let handle = get_std_handle(STD_INPUT_HANDLE).ok()?;
+pub fn poll_input(timeout: Duration) -> io::Result<Event> {
+    let handle = get_std_handle(STD_INPUT_HANDLE)?;
     let mut record: InputRecord = unsafe { mem::zeroed() };
     let mut read = 0;
 
@@ -73,23 +73,24 @@ pub fn poll_input(timeout: Duration) -> Option<io::Result<Event>> {
     let mut handles = [handle];
     let result = unsafe { WaitForMultipleObjects(1, handles.as_mut_ptr(), 0, wait_time_millis) };
 
+    // The function timed out
     if result != 0 {
-        return None;
+        return Err(io::ErrorKind::TimedOut.into());
     }
 
     let result = unsafe { ReadConsoleInputW(handle, &mut record, 1, &mut read) };
 
     if result == 0 {
-        return Some(Err(io::Error::last_os_error()));
+        return Err(io::Error::last_os_error())?;
     }
     if record.event_type == 1 {
         let key_event = unsafe { record.event.key_event };
         if key_event.key_down == 0 {
-            return Some(Ok(Event::Key(KeyEvent::Null)));
+            return Ok(Event::Key(KeyEvent::Null));
         }
-        return Some(Ok(Event::Key(parse_key_event(&key_event))));
+        return Ok(Event::Key(parse_key_event(&key_event)));
     }
-    None
+    Err(io::ErrorKind::InvalidData.into())
 }
 
 fn parse_key_event(event: &KeyEventRecord) -> KeyEvent {
