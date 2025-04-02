@@ -208,3 +208,39 @@ pub const COLOR_WHITE_BG: &str = "\x1b[47m";
 pub const COLOR_DEFAULT_FG: &str = "\x1b[39m";
 /// Makes characters sent to the screen have a default background
 pub const COLOR_DEFAULT_BG: &str = "\x1b[49m";
+
+pub const COLORS_FG: [&str; 9] = [
+    COLOR_BLACK_FG,
+    COLOR_RED_FG,
+    COLOR_GREEN_FG,
+    COLOR_YELLOW_FG,
+    COLOR_BLUE_FG,
+    COLOR_MAGENTA_FG,
+    COLOR_CYAN_FG,
+    COLOR_WHITE_FG,
+    COLOR_DEFAULT_FG,
+];
+
+pub const COLORS_BG: [&str; 9] = [
+    COLOR_BLACK_BG,
+    COLOR_RED_BG,
+    COLOR_GREEN_BG,
+    COLOR_YELLOW_BG,
+    COLOR_BLUE_BG,
+    COLOR_MAGENTA_BG,
+    COLOR_CYAN_BG,
+    COLOR_WHITE_BG,
+    COLOR_DEFAULT_BG,
+];
+
+pub const COLORS: [(&str, &str); 9] = [
+    (COLOR_BLACK_FG, COLOR_BLACK_BG),
+    (COLOR_RED_FG, COLOR_RED_BG),
+    (COLOR_GREEN_FG, COLOR_GREEN_BG),
+    (COLOR_YELLOW_FG, COLOR_YELLOW_BG),
+    (COLOR_BLUE_FG, COLOR_BLUE_BG),
+    (COLOR_MAGENTA_FG, COLOR_MAGENTA_BG),
+    (COLOR_CYAN_FG, COLOR_CYAN_BG),
+    (COLOR_WHITE_FG, COLOR_WHITE_BG),
+    (COLOR_DEFAULT_FG, COLOR_DEFAULT_BG),
+];

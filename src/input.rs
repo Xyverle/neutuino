@@ -16,6 +16,7 @@ mod windows_input;
 #[cfg(windows)]
 pub use windows_input::*;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Event {
     Key(KeyEvent),
     Mouse(MouseEvent),
@@ -23,6 +24,7 @@ pub enum Event {
     FocusLost,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum KeyEvent {
     Backspace,
     Up,
@@ -44,12 +46,14 @@ pub enum KeyEvent {
     Null,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum MouseEvent {
     Press(MouseButton, u16, u16),
     Release(u16, u16),
     Hold(u16, u16),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum MouseButton {
     Left,
     Right,

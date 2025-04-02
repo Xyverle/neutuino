@@ -32,18 +32,21 @@ impl Iterator for ReadIterator {
     type Item = io::Result<u8>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let bytes_read = unsafe { read(self.fd, &raw mut self.buf as *mut c_void, 1) };
+        let bytes_read = unsafe { read(self.fd, (&raw mut self.buf).cast::<c_void>(), 1) };
 
-        if bytes_read > 0 {
-            Some(Ok(self.buf))
-        } else if bytes_read == 0 {
-            None
-        } else {
-            Some(Err(io::Error::last_os_error()))
+        match bytes_read {
+            1.. => Some(Ok(self.buf)),
+            0 => None,
+            _ => Some(Err(io::Error::last_os_error())),
         }
     }
 }
 
+/// Attempts to fetch input from stdin
+///
+/// # Errors
+/// If the timeout has expired or
+/// there was an error getting the data
 pub fn poll_input(timeout: Duration) -> io::Result<Event> {
     let mut fds = [PollFD {
         fd: STDIN_FILENO,
@@ -51,6 +54,7 @@ pub fn poll_input(timeout: Duration) -> io::Result<Event> {
         revents: 0,
     }];
     let result = unsafe {
+        #[allow(clippy::cast_possible_truncation)]
         poll(
             fds.as_mut_ptr(),
             fds.len() as c_ulong,
@@ -59,14 +63,15 @@ pub fn poll_input(timeout: Duration) -> io::Result<Event> {
     };
     let mut read_iter = ReadIterator::new(STDIN_FILENO);
 
-    if result > 0 {
-        let item = read_iter.next().ok_or(io::ErrorKind::InvalidData)??;
-        try_parse_event(item, &mut read_iter)
-    } else if result == 0 {
-        // The function timed out.
-        Err(io::ErrorKind::TimedOut.into())
-    } else {
-        Err(io::Error::last_os_error())
+    let timed_out: io::Error = io::ErrorKind::TimedOut.into();
+
+    match result {
+        1.. => {
+            let item = read_iter.next().ok_or(timed_out)??;
+            try_parse_event(item, &mut read_iter)
+        }
+        0 => Err(timed_out),
+        _ => Err(io::Error::last_os_error()),
     }
 }
 
