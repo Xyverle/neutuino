@@ -1,4 +1,5 @@
-use std::io;
+use std::io::{self, Stdin, Stdout};
+use std::os::windows::io::RawHandle;
 
 unsafe extern "system" {
     fn GetStdHandle(std_handle: u32) -> usize;
