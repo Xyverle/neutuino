@@ -13,17 +13,25 @@ struct InputRecord {
 #[repr(C)]
 #[derive(Copy, Clone)]
 union EventRecord {
-    key_event: KeyEventRecord,
-    mouse_event: MouseEventRecord,
+    key: KeyEventRecord,
+    focus: FocusEventRecord,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct KeyEventRecord {
     key_down: i32,
+    repeat_count: u16,
     virtual_key_code: u16,
+    virtual_scan_code: u16,
     u_char: CharUnion,
     control_key_state: u32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+struct FocusEventRecord {
+    set_focus: i32,
 }
 
 #[repr(C)]
@@ -33,34 +41,16 @@ union CharUnion {
     ascii_char: u8,
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct MouseEventRecord {
-    mouse_position: Coord,
-    button_state: u32,
-    control_key_state: u32,
-    event_flags: u32,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct Coord {
-    x: i16,
-    y: i16,
-}
-
 unsafe extern "system" {
     fn ReadConsoleInputW(
-        h_console_input: usize,
-        lp_buffer: *mut InputRecord,
-        n_length: u32,
-        lp_number_of_events_read: *mut u32,
+        console_input: usize,
+        buffer: *mut InputRecord,
+        length: u32,
+        number_of_events_read: *mut u32,
     ) -> i32;
-    fn WaitForMultipleObjects(
-        n_count: u32,
-        lp_handles: *mut usize,
-        b_wait_all: i32,
-        dw_wait_time: u32,
+    fn WaitForSingleObject(
+        handle: usize,
+        wait_time_ms: u32,
     ) -> u32;
 }
 
@@ -70,8 +60,7 @@ pub fn poll_input(timeout: Duration) -> io::Result<Event> {
     let mut read = 0;
 
     let wait_time_millis = timeout.as_millis() as u32;
-    let mut handles = [handle];
-    let result = unsafe { WaitForMultipleObjects(1, handles.as_mut_ptr(), 0, wait_time_millis) };
+    let result = unsafe { WaitForSingleObject(handle, wait_time_millis) };
 
     // The function timed out
     if result != 0 {
@@ -83,14 +72,21 @@ pub fn poll_input(timeout: Duration) -> io::Result<Event> {
     if result == 0 {
         return Err(io::Error::last_os_error())?;
     }
-    if record.event_type == 1 {
-        let key_event = unsafe { record.event.key_event };
-        if key_event.key_down == 0 {
-            return Ok(Event::Key(KeyEvent::Null));
+    match record.event_type {
+        0x10 => { // Focus Event
+            Err(io::ErrorKind::InvalidData.into())
+        },
+        0x1 => { // Key Event
+            let key_event: KeyEventRecord = unsafe { record.event.key };
+            if key_event.key_down == 0 {
+                return Ok(Event::Key(KeyEvent::Null));
+            }
+            Ok(Event::Key(parse_key_event(&key_event)))
+        },
+        _ => { //TODO Make this better
+            Err(io::ErrorKind::InvalidData.into())
         }
-        return Ok(Event::Key(parse_key_event(&key_event)));
     }
-    Err(io::ErrorKind::InvalidData.into())
 }
 
 fn parse_key_event(event: &KeyEventRecord) -> KeyEvent {

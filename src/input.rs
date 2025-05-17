@@ -19,7 +19,6 @@ pub use windows_input::*;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Event {
     Key(KeyEvent),
-    Mouse(MouseEvent),
     FocusGained,
     FocusLost,
 }
@@ -46,20 +45,8 @@ pub enum KeyEvent {
     Null,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum MouseEvent {
-    Press(MouseButton, u16, u16),
-    Release(u16, u16),
-    Hold(u16, u16),
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum MouseButton {
-    Left,
-    Right,
-    Middle,
-    WheelUp,
-    WheelDown,
-    WheelLeft,
-    WheelRight,
+impl From<KeyEvent> for Event {
+    fn from(value: KeyEvent) -> Self {
+        Self::Key(value)
+    }
 }

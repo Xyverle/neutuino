@@ -22,7 +22,6 @@ const TIOCGWINSZ: c_ulong = 0x4008_7468;
 #[cfg(target_os = "macos")]
 const NCCS: usize = 0x14;
 
-//
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
 struct Winsize {
