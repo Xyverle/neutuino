@@ -1,4 +1,4 @@
-#![warn(clippy::all, clippy::pedantic, clippy::complexity, clippy::perf, clippy::style, clippy::restriction)]
+#![warn(clippy::all, clippy::pedantic)]
 
 pub mod ansi;
 pub mod input;

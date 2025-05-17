@@ -1,4 +1,4 @@
-use crate::input::{Event, KeyEvent, MouseButton, MouseEvent};
+use crate::input::{Event, KeyEvent};
 use crate::os::{POLLIN, STDIN_FILENO};
 use std::ffi::{c_int, c_short, c_ulong, c_void};
 use std::io;
