@@ -2,5 +2,8 @@
 name = "neutuino"
 version = "0.1.0"
 edition = "2024"
-
-[dependencies]
+repository = "https://github.com/Xyverle/neutuino"
+description = "A minimal zero-dependancy pure-rust cross-platform TUI library"
+license = "MIT"
+keywords = ["tui", "cli", "input", "terminal", "color"]
+categories = ["command-line-interface"]
