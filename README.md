@@ -3,7 +3,7 @@ Zero dependancy cross-platform pure-rust simple TUI library
 
 Supported OSes: Windows 10+, MacOS (untested), Linux
 
-This project is still highly work in progress and it will be a decent while until 1.0
+This project is still highly work in progress and it will be a decent while until feature completeness
 
 ## Todo
 - [x] Output (Unix)
@@ -14,4 +14,4 @@ This project is still highly work in progress and it will be a decent while unti
 - [ ] Events (Focus reporting, Bracketed-paste) (Windows)
 - [ ] Mouse input (Unix)
 - [ ] Mouse input (Windows)
-- [ ] 1.0 / API cleanup
+- [ ] Feature completeness / API cleanup

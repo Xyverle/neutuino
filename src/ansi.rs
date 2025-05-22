@@ -209,6 +209,8 @@ pub const COLOR_DEFAULT_FG: &str = "\x1b[39m";
 /// Makes characters sent to the screen have a default background
 pub const COLOR_DEFAULT_BG: &str = "\x1b[49m";
 
+/// List of all foreground colors in the order:
+/// Black, Red, Green, Yellow, Blue, Magenta, Cyan, White, Default
 pub const COLORS_FG: [&str; 9] = [
     COLOR_BLACK_FG,
     COLOR_RED_FG,
@@ -221,6 +223,8 @@ pub const COLORS_FG: [&str; 9] = [
     COLOR_DEFAULT_FG,
 ];
 
+/// List of all background colors in the order:
+/// Black, Red, Green, Yellow, Blue, Magenta, Cyan, White, Default
 pub const COLORS_BG: [&str; 9] = [
     COLOR_BLACK_BG,
     COLOR_RED_BG,
@@ -233,6 +237,8 @@ pub const COLORS_BG: [&str; 9] = [
     COLOR_DEFAULT_BG,
 ];
 
+/// List of all foreground and background colors in the order:
+/// Black, Red, Green, Yellow, Blue, Magenta, Cyan, White, Default
 pub const COLORS: [(&str, &str); 9] = [
     (COLOR_BLACK_FG, COLOR_BLACK_BG),
     (COLOR_RED_FG, COLOR_RED_BG),
