@@ -4,21 +4,21 @@
 //!
 //! For these to work on Windows you need to run the `enable_ansi` function in the os module
 
-/// Sets the terminal to an arbitrary 12-bit/truecolor color
+use std::io::{self, Write};
+
+/// Sets the terminal to an arbitrary 12-bit/truecolor color in the foreground when printed
 #[must_use]
 pub fn rgb_color_code_fg(red: u8, green: u8, blue: u8) -> String {
     format!("\x1b[38;2;{red};{green};{blue}m")
 }
 
-/// Sets the terminal to an arbitrary 12-bit/truecolor color
+/// Sets the terminal to an arbitrary 12-bit/truecolor color in the background when printed
 #[must_use]
 pub fn rgb_color_code_bg(red: u8, green: u8, blue: u8) -> String {
     format!("\x1b[48;2;{red};{green};{blue}m")
 }
 
-/// Sets the title of the window
-///
-/// The title must be only in ASCII characters or **weird** things will happen
+/// Sets the title of the window when printed
 #[must_use]
 pub fn set_window_title<T: Into<String>>(title: T) -> Option<String> {
     let title = title.into();
@@ -28,31 +28,31 @@ pub fn set_window_title<T: Into<String>>(title: T) -> Option<String> {
     Some(format!("\x1b]0;{title}\x1b\x5c"))
 }
 
-/// Moves the cursor up {num} characters
+/// Moves the cursor up {num} characters when printed
 #[must_use]
 pub fn move_cursor_up(num: u16) -> String {
     format!("\x1b[{num}A")
 }
 
-/// Moves the cursor down {num} characters
+/// Moves the cursor down {num} characters when printed
 #[must_use]
 pub fn move_cursor_down(num: u16) -> String {
     format!("\x1b[{num}B")
 }
 
-/// Moves the cursor right {num} characters
+/// Moves the cursor right {num} characters when printed
 #[must_use]
 pub fn move_cursor_right(num: u16) -> String {
     format!("\x1b[{num}C")
 }
 
-/// Moves the cursor left {num} characters
+/// Moves the cursor left {num} characters when printed
 #[must_use]
 pub fn move_cursor_left(num: u16) -> String {
     format!("\x1b[{num}A")
 }
 
-/// Moves the cursor to {row}
+/// Moves the cursor to {row} when printed
 ///
 /// Origin is 0, 0
 #[must_use]
@@ -60,7 +60,7 @@ pub fn move_cursor_to_row(line: u16) -> String {
     format!("\x1b[{}d", line.saturating_add(1))
 }
 
-/// Moves the cursor to {column}
+/// Moves the cursor to {column} when printed
 ///
 /// Origin is 0, 0
 #[must_use]
@@ -68,7 +68,7 @@ pub fn move_cursor_to_column(column: u16) -> String {
     format!("\x1b[{}G", column.saturating_add(1))
 }
 
-/// Moves the cursor to Position {x}, {y}
+/// Moves the cursor to Position {x}, {y} when printed
 ///
 /// Origin is 0, 0
 #[must_use]
@@ -250,3 +250,75 @@ pub const COLORS: [(&str, &str); 9] = [
     (COLOR_WHITE_FG, COLOR_WHITE_BG),
     (COLOR_DEFAULT_FG, COLOR_DEFAULT_BG),
 ];
+
+/// Struct that prints `ALT_SCREEN_ENTER` on construction
+/// and `ALT_SCREEN_EXIT` on destruction
+///
+/// Prefered over function as it prints `ALT_SCREEN_EXIT` on panic
+pub struct AltScreenHandler {
+    enabled: bool,
+}
+
+impl AltScreenHandler {
+    /// Creates a new instance and sets the terminal into the alternate screen
+    ///
+    /// # Errors
+    ///
+    /// If it fails to print or flush the output
+    pub fn new() -> io::Result<Self> {
+        print!("{ALT_SCREEN_ENTER}");
+        io::stdout().flush()?;
+        Ok(Self { enabled: true })
+    }
+    /// Enables raw mode
+    ///
+    /// # Errors
+    ///
+    /// Never errors if the alt screen is already enabled
+    ///
+    /// If it fails to print or flush the output
+    pub fn enable(&mut self) -> io::Result<()> {
+        self.set(true)
+    }
+    /// Disables raw mode
+    ///
+    /// # Errors
+    ///
+    /// Never errors if the alt screen is already disabled
+    ///
+    /// If it fails to print or flush the output
+    pub fn disable(&mut self) -> io::Result<()> {
+        self.set(false)
+    }
+    /// Sets raw mode
+    ///
+    /// # Errors
+    ///
+    /// Never errors if the alt screen is in the same state as the boolean
+    ///
+    /// If it fails to print or flush the output
+    pub fn set(&mut self, alt: bool) -> io::Result<()> {
+        if self.enabled == alt {
+            return Ok(());
+        }
+        if alt {
+            print!("{ALT_SCREEN_ENTER}");
+        } else {
+            print!("{ALT_SCREEN_EXIT}");
+        }
+        io::stdout().flush()?;
+        self.enabled = alt;
+        Ok(())
+    }
+    /// Gets if the alt screen is enabled
+    #[must_use]
+    pub fn get(&self) -> bool {
+        self.enabled
+    }
+}
+
+impl Drop for AltScreenHandler {
+    fn drop(&mut self) {
+        self.disable().expect("Failed to disable alternate screen");
+    }
+}

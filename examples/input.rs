@@ -1,11 +1,6 @@
 #![warn(clippy::all, clippy::pedantic)]
 
-use neutuino::ansi::{
-    COLORS_BG, COLORS_FG, STYLE_BOLD, STYLE_ITALIC, STYLE_RESET, STYLE_UNDERLINE,
-    move_cursor_to_column, set_window_title,
-};
-use neutuino::input::{Event, KeyEvent, poll_input};
-use neutuino::os::{disable_raw_mode, enable_ansi, enable_raw_mode, get_terminal_size};
+use neutuino::prelude::*;
 use std::{io, time::Duration};
 
 fn print_line_style_reset(string: &str) {
@@ -16,13 +11,13 @@ fn main() -> io::Result<()> {
     let all_styles = format!("{STYLE_BOLD}{STYLE_ITALIC}{STYLE_UNDERLINE}");
 
     enable_ansi()?;
-    enable_raw_mode()?;
+    let _raw_terminal = RawModeHandler::new()?;
 
     println!("q to quit{}", move_cursor_to_column(0));
     let next = |x: usize| (x + 1) % COLORS_FG.len();
 
     let terminal_size = get_terminal_size()?;
-    let terminal_size_str = format!("{terminal_size:?}");
+    let terminal_size_str = format!("{:?}", terminal_size);
     print!("{}", set_window_title(terminal_size_str).unwrap());
 
     let mut counter = 0;
@@ -45,6 +40,5 @@ fn main() -> io::Result<()> {
         }
         counter = next(counter);
     }
-    disable_raw_mode()?;
     Ok(())
 }

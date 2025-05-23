@@ -1,62 +1,35 @@
 #![warn(clippy::all, clippy::pedantic)]
-
-pub mod ansi;
+// this lint has way too many false positives
+#![allow(clippy::doc_markdown)]
+//! This crate is a simple and minimal TUI library that supports the following OSes:
+//! - Windows 10+
+//! - MacOS (currently untested)
+//! - Linux
+//!
+//! ## Roadmap
+//! - [x] Output (Unix)
+//! - [x] Output (Windows)
+//! - [x] Input (Unix) (Appears to work, more testing needed)
+//! - [ ] Input (Windows) (WIP)
+//! - [ ] Events (Focus reporting, Bracketed-paste) (Unix)
+//! - [ ] Events (Focus reporting, Bracketed-paste) (Windows)
+//! - [ ] Mouse input (Unix)
+//! - [ ] Mouse input (Windows)
+//! - [ ] Feature completeness / API cleanup
 
 #[cfg(unix)]
 mod unix;
 
-#[cfg(unix)]
-pub use crate::unix::*;
-
 #[cfg(windows)]
 mod windows;
 
-#[cfg(windows)]
-pub use crate::windows::*;
+pub mod ansi;
+pub mod input;
+pub mod os;
 
-pub mod input {
-    //! Various input functions, structs, etc.
-    //!
-    //! Very incomplete currently
-
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-    pub enum Event {
-        Key(KeyEvent),
-        FocusGained,
-        FocusLost,
-    }
-
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-    pub enum KeyEvent {
-        Backspace,
-        Up,
-        Down,
-        Left,
-        Right,
-        Home,
-        End,
-        PageUp,
-        PageDown,
-        Tab,
-        BackTab,
-        Delete,
-        Insert,
-        F(u8),
-        Char(char),
-        Ctrl(char),
-        Escape,
-        Null,
-    }
-
-    impl From<KeyEvent> for Event {
-        fn from(value: KeyEvent) -> Self {
-            Self::Key(value)
-        }
-    }
-
-    #[cfg(unix)]
-    pub use crate::unix::input::*;
-
-    #[cfg(windows)]
-    pub use crate::windows::input::*;
+pub mod prelude {
+    //! Covenience re-export of common members
+    pub use crate::ansi::*;
+    pub use crate::input::*;
+    pub use crate::os::*;
 }

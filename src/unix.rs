@@ -9,11 +9,11 @@ unsafe extern "C" {
 
 const STDIN_FILENO: c_int = 0;
 const STDOUT_FILENO: c_int = 1;
-pub const POLLIN: c_short = 1;
+const POLLIN: c_short = 1;
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_os = "macos"))]
 const TIOCGWINSZ: c_ulong = 0x5413;
-#[cfg(target_os = "linux")]
+#[cfg(not(target_os = "macos"))]
 const NCCS: usize = 0x20;
 
 #[cfg(target_os = "macos")]
@@ -276,7 +276,7 @@ pub mod input {
             Some(Ok(b'B')) => Some(Event::Key(KeyEvent::Down)),
             Some(Ok(b'H')) => Some(Event::Key(KeyEvent::Home)),
             Some(Ok(b'F')) => Some(Event::Key(KeyEvent::End)),
-            Some(Ok(b'Z')) => Some(Event::Key(KeyEvent::BackTab)),
+            Some(Ok(b'Z')) => Some(Event::Key(KeyEvent::ShiftTab)),
             _ => None,
         }
     }

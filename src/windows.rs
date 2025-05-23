@@ -241,7 +241,7 @@ pub mod input {
             0x08 => KeyEvent::Backspace, // VK_BACK
             0x09 => {
                 if shift {
-                    KeyEvent::BackTab
+                    KeyEvent::ShiftTab
                 } else {
                     KeyEvent::Tab
                 }
