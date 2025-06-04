@@ -2,12 +2,15 @@
 
 use neutuino::prelude::*;
 use std::{io, time::Duration};
+use std::io::IsTerminal;
 
 fn print_line_style_reset(string: &str) {
     println!("{}{}{}", string, STYLE_RESET, move_cursor_to_column(0));
 }
 
 fn main() -> io::Result<()> {
+    assert!(io::stdout().is_terminal(), "Not running in a terminal");
+
     let all_styles = format!("{STYLE_BOLD}{STYLE_ITALIC}{STYLE_UNDERLINE}");
 
     enable_ansi()?;

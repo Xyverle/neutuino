@@ -2,11 +2,13 @@
 
 use neutuino::prelude::*;
 use std::{
-    io::{self, Write},
+    io::{self, IsTerminal, Write},
     thread, time,
 };
 
 fn main() -> io::Result<()> {
+    assert!(io::stdout().is_terminal(), "Not running in a terminal");
+
     enable_ansi()?;
 
     // makes the terminal raw until this value is dropped
