@@ -1,4 +1,5 @@
 use std::ffi::{c_int, c_short, c_uint, c_ulong, c_ushort};
+use std::io;
 
 unsafe extern "C" {
     fn ioctl(fd: c_int, request: c_ulong, argp: *mut u8) -> c_int;
@@ -10,6 +11,7 @@ unsafe extern "C" {
 const STDIN_FILENO: c_int = 0;
 const STDOUT_FILENO: c_int = 1;
 const POLLIN: c_short = 1;
+const ICRNL: c_uint = 0x40;
 
 #[cfg(not(target_os = "macos"))]
 const TIOCGWINSZ: c_ulong = 0x5413;
@@ -40,11 +42,29 @@ struct Termios {
     cc: [u8; NCCS],
 }
 
+fn get_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
+    if unsafe { tcgetattr(fd, &raw mut *termios) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+fn set_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
+    if unsafe { tcsetattr(fd, 0, std::ptr::from_mut(termios)) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+fn make_raw(termios: &mut Termios) {
+    cfmakeraw(termios);
+    termios.iflag |= !(ICRNL);
+}
+
 pub mod os {
     use super::{STDIN_FILENO, STDOUT_FILENO, TIOCGWINSZ};
     use super::{Termios, Winsize};
-    use super::{cfmakeraw, ioctl, tcgetattr, tcsetattr};
-    use std::ffi::c_int;
+    use super::{get_attributes, set_attributes, make_raw, ioctl};
     use std::io;
     use std::sync::LazyLock;
 
@@ -64,7 +84,7 @@ pub mod os {
     pub fn enable_raw_mode() -> io::Result<()> {
         let mut termios =
             (*TERMIOS).ok_or(io::Error::other("Failed to get terminal properties"))?;
-        cfmakeraw(&raw mut termios);
+        make_raw(&mut termios);
         set_attributes(STDIN_FILENO, &mut termios)?;
         Ok(())
     }
@@ -119,20 +139,6 @@ pub mod os {
         } else {
             Err(io::Error::last_os_error())
         }
-    }
-
-    fn get_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
-        if unsafe { tcgetattr(fd, &raw mut *termios) } != 0 {
-            return Err(io::Error::last_os_error());
-        }
-        Ok(())
-    }
-
-    fn set_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
-        if unsafe { tcsetattr(fd, 0, std::ptr::from_mut(termios)) } != 0 {
-            return Err(io::Error::last_os_error());
-        }
-        Ok(())
     }
 }
 

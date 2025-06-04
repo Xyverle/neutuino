@@ -1,22 +1,24 @@
 use std::io;
+use std::os::windows::raw::HANDLE;
 
+#[link(name = "kernel32")]
 unsafe extern "system" {
-    fn GetStdHandle(std_handle: u32) -> usize;
-    fn GetConsoleMode(console_handle: usize, mode: *mut u32) -> u32;
-    fn SetConsoleMode(console_handle: usize, mode: *mut u32) -> u32;
+    fn GetStdHandle(std_handle: i32) -> HANDLE;
+    fn GetConsoleMode(console_handle: HANDLE, mode: *mut u32) -> u32;
+    fn SetConsoleMode(console_handle: HANDLE, mode: u32) -> u32;
     fn GetConsoleScreenBufferInfo(
-        console_output: usize,
+        console_output: HANDLE,
         console_screen_buffer_info: *mut ConsoleScreenBufferInfo,
     ) -> u32;
 }
 
-const STD_INPUT_HANDLE: u32 = 0xFFFF_FFF6;
-const STD_OUTPUT_HANDLE: u32 = 0xFFFF_FFF5;
+const STD_INPUT_HANDLE: i32 = -10;
+const STD_OUTPUT_HANDLE: i32 = -11;
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 4;
 const ENABLE_ECHO_INPUT: u32 = 4;
 const ENABLE_LINE_INPUT: u32 = 2;
 const ENABLE_PROCESSED_INPUT: u32 = 1;
-const INVALID_HANDLE_VALUE: usize = usize::MAX - 1;
+const INVALID_HANDLE_VALUE: HANDLE = -1isize as HANDLE;
 
 #[repr(C)]
 #[derive(Default)]
@@ -26,8 +28,8 @@ struct ConsoleScreenBufferInfo {
     _unused: [u16; 9],
 }
 
-fn get_std_handle(handle: u32) -> io::Result<usize> {
-    let handle = unsafe { GetStdHandle(handle) };
+fn get_stdin_handle() -> io::Result<HANDLE> {
+    let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE) };
     if handle == INVALID_HANDLE_VALUE {
         Err(io::Error::last_os_error())
     } else {
@@ -35,7 +37,16 @@ fn get_std_handle(handle: u32) -> io::Result<usize> {
     }
 }
 
-fn set_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
+fn get_stdout_handle() -> io::Result<HANDLE> {
+    let handle = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
+    if handle == INVALID_HANDLE_VALUE {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(handle)
+    }
+}
+
+fn set_console_mode(handle: HANDLE, mode: u32) -> io::Result<()> {
     if unsafe { SetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {
@@ -43,7 +54,7 @@ fn set_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
     }
 }
 
-fn get_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
+fn get_console_mode(handle: HANDLE, mode: &mut u32) -> io::Result<()> {
     if unsafe { GetConsoleMode(handle, mode) == 0 } {
         Err(io::Error::last_os_error())
     } else {
@@ -52,12 +63,11 @@ fn get_console_mode(handle: usize, mode: &mut u32) -> io::Result<()> {
 }
 
 pub mod os {
-    use super::{ConsoleScreenBufferInfo, get_console_mode, get_std_handle, set_console_mode};
+    use super::{GetConsoleScreenBufferInfo, ConsoleScreenBufferInfo, get_console_mode, get_stdin_handle, get_stdout_handle, set_console_mode};
     use super::{
         ENABLE_ECHO_INPUT, ENABLE_LINE_INPUT, ENABLE_PROCESSED_INPUT,
         ENABLE_VIRTUAL_TERMINAL_PROCESSING,
     };
-    use super::{GetConsoleScreenBufferInfo, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
     use std::io;
 
     /// Enables raw mode, which disables line buffering, input echoing, and output canonicalization
@@ -68,11 +78,11 @@ pub mod os {
     /// stdin is not a tty,
     /// or it fails to change terminal settings
     pub fn enable_raw_mode() -> io::Result<()> {
-        let handle = get_std_handle(STD_INPUT_HANDLE)?;
+        let handle = get_stdin_handle()?;
         let mut mode = 0;
         get_console_mode(handle, &mut mode)?;
         mode &= !(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
-        set_console_mode(handle, &mut mode)?;
+        set_console_mode(handle, mode)?;
         Ok(())
     }
 
@@ -84,11 +94,11 @@ pub mod os {
     /// stdin is not a tty,
     /// or it fails to change terminal settings
     pub fn disable_raw_mode() -> io::Result<()> {
-        let handle = get_std_handle(STD_INPUT_HANDLE)?;
+        let handle = get_stdin_handle()?;
         let mut mode = 0;
         get_console_mode(handle, &mut mode)?;
         mode |= ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
-        set_console_mode(handle, &mut mode)?;
+        set_console_mode(handle, mode)?;
         Ok(())
     }
 
@@ -104,11 +114,11 @@ pub mod os {
     /// if stdout isn't a TTY, or
     /// if it cannot change terminal properties
     pub fn enable_ansi() -> io::Result<()> {
-        let handle = get_std_handle(STD_OUTPUT_HANDLE)?;
+        let handle = get_stdout_handle()?;
         let mut mode = 0;
         get_console_mode(handle, &mut mode)?;
         mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        set_console_mode(handle, &mut mode)?;
+        set_console_mode(handle, mode)?;
         Ok(())
     }
 
@@ -122,7 +132,7 @@ pub mod os {
     /// if stdout isn't a TTY, or
     /// if it fails to retrieve the terminal size
     pub fn get_terminal_size() -> io::Result<(u16, u16)> {
-        let handle = get_std_handle(STD_OUTPUT_HANDLE)?;
+        let handle = get_stdout_handle()?;
         let mut csbi = ConsoleScreenBufferInfo::default();
         if unsafe { GetConsoleScreenBufferInfo(handle, &mut csbi) != 0 } {
             let width = csbi.x;
@@ -134,10 +144,11 @@ pub mod os {
 }
 
 pub mod input {
-    use super::{STD_INPUT_HANDLE, get_std_handle};
+    use super::get_stdin_handle;
     use crate::input::{Event, KeyEvent};
 
     use std::{io, mem, time::Duration};
+    use std::os::windows::raw::HANDLE;
 
     #[repr(C)]
     #[derive(Copy, Clone)]
@@ -179,12 +190,12 @@ pub mod input {
 
     unsafe extern "system" {
         fn ReadConsoleInputW(
-            console_input: usize,
+            console_input: HANDLE,
             buffer: *mut InputRecord,
             length: u32,
             number_of_events_read: *mut u32,
         ) -> i32;
-        fn WaitForSingleObject(handle: usize, wait_time_ms: u32) -> u32;
+        fn WaitForSingleObject(handle: HANDLE, wait_time_ms: u32) -> u32;
     }
 
     /// Attempts to fetch input from stdin
@@ -193,7 +204,7 @@ pub mod input {
     /// If the timeout has expired or
     /// there was an error getting the data
     pub fn poll_input(timeout: Duration) -> io::Result<Event> {
-        let handle = get_std_handle(STD_INPUT_HANDLE)?;
+        let handle = get_stdin_handle()?;
         let mut record: InputRecord = unsafe { mem::zeroed() };
         let mut read = 0;
 
@@ -222,7 +233,10 @@ pub mod input {
                 // Key Event
                 let key_event: KeyEventRecord = unsafe { record.event.key };
                 if key_event.key_down == 0 {
-                    return Ok(Event::Key(KeyEvent::Null));
+                    // return Ok(Event::Key(KeyEvent::Null));
+                    // I don't quite know why but this seems to happen a lot, until I investigate
+                    // more this will have to do
+                    return Err(io::ErrorKind::Other.into());
                 }
                 Ok(Event::Key(parse_key_event(&key_event)))
             }
