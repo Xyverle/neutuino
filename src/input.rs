@@ -1,6 +1,12 @@
 //! Various input functions, structs, etc.
 //!
 //! Very incomplete currently
+//!
+//! # Support
+//! This library attempts to support as much on all platforms but many platforms are very weird
+//!
+//! In general the best support will be on Kitty-like linux terminals and Windows, due to historical
+//! reasons input on normal *nix terminals are limited
 
 /// Different events that can happen through the terminal
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -15,7 +21,11 @@ pub enum Event {
 
 /// An event that happens upon a key being pressed
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum KeyEvent {
+pub struct KeyEvent(pub Key, pub KeyType, pub KeyModifiers);
+
+/// An event that happens upon a key being pressed
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Key {
     /// The Backspace key
     Backspace,
     /// The Up arrow key
@@ -46,14 +56,67 @@ pub enum KeyEvent {
     F(u8),
     /// Any character inputted by the keyboard
     Char(char),
-    /// Ctrl + Char
-    Ctrl(char),
     /// The Escape key
     Escape,
     /// A null byte sent to the terminal
     ///
     /// Can mean several different things
     Null,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct KeyModifiers {
+    pub shift: bool,
+    pub alt: bool,
+    pub ctrl: bool,
+    pub meta: bool,
+}
+
+impl KeyModifiers {
+    #[must_use]
+    pub const fn none() -> Self {
+        Self {
+            shift: false,
+            alt: false,
+            ctrl: false,
+            meta: false,
+        }
+    }
+    #[must_use]
+    pub const fn shift(self) -> Self {
+        let mut value = self;
+        value.shift = true;
+        value
+    }
+    #[must_use]
+    pub const fn alt(self) -> Self {
+        let mut value = self;
+        value.alt = true;
+        value
+    }
+    #[must_use]
+    pub const fn ctrl(self) -> Self {
+        let mut value = self;
+        value.ctrl = true;
+        value
+    }
+    #[must_use]
+    pub const fn meta(self) -> Self {
+        let mut value = self;
+        value.meta = true;
+        value
+    }
+}
+
+/// This is the type of the key that is sent to the terminal
+///
+/// This is implemented in Windows, and Kitty-like Terminals
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum KeyType {
+    Press,
+    Repeat,
+    Release,
 }
 
 impl From<KeyEvent> for Event {

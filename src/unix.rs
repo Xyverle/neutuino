@@ -3,7 +3,7 @@ use std::io;
 
 unsafe extern "C" {
     fn ioctl(fd: c_int, request: c_ulong, argp: *mut u8) -> c_int;
-    safe fn cfmakeraw(termios: *mut Termios);
+    fn cfmakeraw(termios: *mut Termios);
     fn tcgetattr(fd: c_int, termios: *mut Termios) -> c_int;
     fn tcsetattr(fd: c_int, optional_actions: c_int, termios: *mut Termios) -> c_int;
 }
@@ -57,14 +57,16 @@ fn set_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
 }
 
 fn make_raw(termios: &mut Termios) {
-    cfmakeraw(termios);
-    termios.iflag |= !(ICRNL);
+    unsafe {
+        cfmakeraw(termios);
+    }
+    // termios.iflag |= !(ICRNL);
 }
 
 pub mod os {
     use super::{STDIN_FILENO, STDOUT_FILENO, TIOCGWINSZ};
     use super::{Termios, Winsize};
-    use super::{get_attributes, set_attributes, make_raw, ioctl};
+    use super::{get_attributes, ioctl, make_raw, set_attributes};
     use std::io;
     use std::sync::LazyLock;
 
@@ -144,7 +146,7 @@ pub mod os {
 
 pub mod input {
     use super::{POLLIN, STDIN_FILENO};
-    use crate::input::{Event, KeyEvent};
+    use crate::input::{Event, Key, KeyEvent, KeyModifiers, KeyType};
     use std::ffi::{c_int, c_short, c_ulong, c_void};
     use std::io;
     use std::time::Duration;
@@ -226,13 +228,54 @@ pub mod input {
     {
         match item {
             b'\x1b' => try_parse_ansi_sequence(iter),
-            b'\n' | b'\r' => Ok(Event::Key(KeyEvent::Char('\n'))),
-            b'\t' => Ok(Event::Key(KeyEvent::Tab)),
-            b'\x7f' => Ok(Event::Key(KeyEvent::Backspace)),
-            b'\0' => Ok(Event::Key(KeyEvent::Null)),
-            c @ b'\x01'..=b'\x1a' => Ok(Event::Key(KeyEvent::Ctrl((c + 96) as char))),
-            c @ b'\x1c'..=b'\x1f' => Ok(Event::Key(KeyEvent::Ctrl((c + 24) as char))),
-            c => Ok(Event::Key(KeyEvent::Char(parse_utf8_char(c, iter)?))),
+            b'\r' => Ok(Event::Key(KeyEvent(
+                Key::Char('\n'),
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            b'\n' => Ok(Event::Key(KeyEvent(
+                Key::Char('j'),
+                KeyType::Press,
+                KeyModifiers::none().ctrl(),
+            ))),
+            b'\t' => Ok(Event::Key(KeyEvent(
+                Key::Char('\t'),
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            b'\x7f' => Ok(Event::Key(KeyEvent(
+                Key::Backspace,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            b'\0' => Ok(Event::Key(KeyEvent(
+                Key::Null,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            c @ b'\x01'..=b'\x1a' => Ok(Event::Key(KeyEvent(
+                Key::Char((c + 96) as char),
+                KeyType::Press,
+                KeyModifiers::none().ctrl(),
+            ))),
+            c @ b'\x1c'..=b'\x1f' => Ok(Event::Key(KeyEvent(
+                Key::Char((c + 24) as char),
+                KeyType::Press,
+                KeyModifiers::none().ctrl(),
+            ))),
+            c => {
+                let character = parse_utf8_char(c, iter)?;
+                Ok(Event::Key(KeyEvent(
+                    Key::Char(parse_utf8_char(c, iter)?),
+                    KeyType::Press,
+                    KeyModifiers {
+                        shift: character.is_uppercase(),
+                        alt: false,
+                        ctrl: false,
+                        meta: false,
+                    },
+                )))
+            }
         }
     }
 
@@ -259,7 +302,11 @@ pub mod input {
         let error = io::Error::other("Could not parse event");
         match iter.next() {
             Some(Ok(b'O')) => match iter.next() {
-                Some(Ok(val @ b'P'..=b's')) => Ok(Event::Key(KeyEvent::F(1 + val - b'P'))),
+                Some(Ok(val @ b'P'..=b's')) => Ok(Event::Key(KeyEvent(
+                    Key::F(1 + val - b'P'),
+                    KeyType::Press,
+                    KeyModifiers::none(),
+                ))),
                 _ => Err(error),
             },
             Some(Ok(b'[')) => try_parse_csi_sequence(iter).ok_or(error),
@@ -273,16 +320,48 @@ pub mod input {
     {
         match iter.next() {
             Some(Ok(b'[')) => match iter.next() {
-                Some(Ok(val @ b'A'..=b'E')) => Some(Event::Key(KeyEvent::F(1 + val - b'A'))),
+                Some(Ok(val @ b'A'..=b'E')) => Some(Event::Key(KeyEvent(
+                    Key::F(1 + val - b'A'),
+                    KeyType::Press,
+                    KeyModifiers::none(),
+                ))),
                 _ => None,
             },
-            Some(Ok(b'D')) => Some(Event::Key(KeyEvent::Left)),
-            Some(Ok(b'C')) => Some(Event::Key(KeyEvent::Right)),
-            Some(Ok(b'A')) => Some(Event::Key(KeyEvent::Up)),
-            Some(Ok(b'B')) => Some(Event::Key(KeyEvent::Down)),
-            Some(Ok(b'H')) => Some(Event::Key(KeyEvent::Home)),
-            Some(Ok(b'F')) => Some(Event::Key(KeyEvent::End)),
-            Some(Ok(b'Z')) => Some(Event::Key(KeyEvent::ShiftTab)),
+            Some(Ok(b'D')) => Some(Event::Key(KeyEvent(
+                Key::Left,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            Some(Ok(b'C')) => Some(Event::Key(KeyEvent(
+                Key::Right,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            Some(Ok(b'A')) => Some(Event::Key(KeyEvent(
+                Key::Up,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            Some(Ok(b'B')) => Some(Event::Key(KeyEvent(
+                Key::Down,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            Some(Ok(b'H')) => Some(Event::Key(KeyEvent(
+                Key::Home,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            Some(Ok(b'F')) => Some(Event::Key(KeyEvent(
+                Key::End,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
+            Some(Ok(b'Z')) => Some(Event::Key(KeyEvent(
+                Key::ShiftTab,
+                KeyType::Press,
+                KeyModifiers::none(),
+            ))),
             _ => None,
         }
     }
