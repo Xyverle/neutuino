@@ -12,18 +12,14 @@
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Event {
     /// An event that happens upon a key being pressed
-    Key(KeyEvent),
+    Key(Key, KeyType, KeyModifiers),
     /// An event that happens upon focus to the terminal window being gained
     FocusGained,
     /// An event that happens upon focus to the terminal window being lost
     FocusLost,
 }
 
-/// An event that happens upon a key being pressed
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct KeyEvent(pub Key, pub KeyType, pub KeyModifiers);
-
-/// An event that happens upon a key being pressed
+/// The base key that was pressed
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Key {
     /// The Backspace key
@@ -46,8 +42,6 @@ pub enum Key {
     PageDown,
     /// The Tab key
     Tab,
-    /// Shift + Tab key
-    ShiftTab,
     /// The delete key
     Delete,
     /// The insert key
@@ -117,12 +111,6 @@ pub enum KeyType {
     Press,
     Repeat,
     Release,
-}
-
-impl From<KeyEvent> for Event {
-    fn from(value: KeyEvent) -> Self {
-        Self::Key(value)
-    }
 }
 
 #[cfg(unix)]

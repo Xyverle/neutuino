@@ -148,7 +148,7 @@ pub mod os {
 
 pub mod input {
     use super::get_stdin_handle;
-    use crate::input::{Event, KeyEvent, Key, KeyModifiers, KeyType};
+    use crate::input::{Event, Key, KeyModifiers, KeyType};
 
     use std::os::windows::raw::HANDLE;
     use std::{io, mem, time::Duration};
@@ -241,7 +241,7 @@ pub mod input {
                     // more this will have to do
                     return Err(io::ErrorKind::Other.into());
                 }
-                Ok(Event::Key(parse_key_event(&key_event)))
+                Ok(parse_key_event(&key_event))
             }
             _ => {
                 //TODO Make this better
@@ -250,41 +250,45 @@ pub mod input {
         }
     }
 
-    fn parse_key_event(event: &KeyEventRecord) -> KeyEvent {
+    fn parse_key_event(event: &KeyEventRecord) -> Event {
         let ctrl = event.control_key_state & (0x0008 | 0x0004) != 0; // LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED
         let shift = event.control_key_state & 0x0010 != 0; // SHIFT_PRESSED
 
         match event.virtual_key_code {
-            0x08 => KeyEvent(Key::Backspace, KeyType::Press, KeyModifiers::none()),
+            0x08 => Event::Key(Key::Backspace, KeyType::Press, KeyModifiers::none()),
             0x09 => {
                 if shift {
-                    KeyEvent(Key::ShiftTab, KeyType::Press, KeyModifiers::none().shift())
+                    Event::Key(Key::Tab, KeyType::Press, KeyModifiers::none().shift())
                 } else {
-                    KeyEvent(Key::Tab, KeyType::Press, KeyModifiers::none())
+                    Event::Key(Key::Tab, KeyType::Press, KeyModifiers::none())
                 }
             }
-            0x0D => KeyEvent(Key::Char('\n'), KeyType::Press, KeyModifiers::none()),
-            0x1B => KeyEvent(Key::Escape, KeyType::Press, KeyModifiers::none()),
-            0x21 => KeyEvent(Key::PageUp, KeyType::Press, KeyModifiers::none()),
-            0x22 => KeyEvent(Key::PageDown, KeyType::Press, KeyModifiers::none()),
-            0x23 => KeyEvent(Key::End, KeyType::Press, KeyModifiers::none()),
-            0x24 => KeyEvent(Key::Home, KeyType::Press, KeyModifiers::none()),
-            0x25 => KeyEvent(Key::Left, KeyType::Press, KeyModifiers::none()),
-            0x26 => KeyEvent(Key::Up, KeyType::Press, KeyModifiers::none()),
-            0x27 => KeyEvent(Key::Right, KeyType::Press, KeyModifiers::none()),
-            0x28 => KeyEvent(Key::Down, KeyType::Press, KeyModifiers::none()),
-            0x2D => KeyEvent(Key::Insert, KeyType::Press, KeyModifiers::none()),
-            0x2E => KeyEvent(Key::Delete, KeyType::Press, KeyModifiers::none()),
+            0x0D => Event::Key(Key::Char('\n'), KeyType::Press, KeyModifiers::none()),
+            0x1B => Event::Key(Key::Escape, KeyType::Press, KeyModifiers::none()),
+            0x21 => Event::Key(Key::PageUp, KeyType::Press, KeyModifiers::none()),
+            0x22 => Event::Key(Key::PageDown, KeyType::Press, KeyModifiers::none()),
+            0x23 => Event::Key(Key::End, KeyType::Press, KeyModifiers::none()),
+            0x24 => Event::Key(Key::Home, KeyType::Press, KeyModifiers::none()),
+            0x25 => Event::Key(Key::Left, KeyType::Press, KeyModifiers::none()),
+            0x26 => Event::Key(Key::Up, KeyType::Press, KeyModifiers::none()),
+            0x27 => Event::Key(Key::Right, KeyType::Press, KeyModifiers::none()),
+            0x28 => Event::Key(Key::Down, KeyType::Press, KeyModifiers::none()),
+            0x2D => Event::Key(Key::Insert, KeyType::Press, KeyModifiers::none()),
+            0x2E => Event::Key(Key::Delete, KeyType::Press, KeyModifiers::none()),
             // I don't think anybody is going to try to press F256 clippy
             #[allow(clippy::cast_possible_truncation)]
-            0x70..=0x87 => KeyEvent(Key::F((event.virtual_key_code - 0x6F) as u8), KeyType::Press, KeyModifiers::none()), // F1-F24
+            0x70..=0x87 => Event::Key(
+                Key::F((event.virtual_key_code - 0x6F) as u8),
+                KeyType::Press,
+                KeyModifiers::none(),
+            ), // F1-F24
             _ => {
                 let c =
                     char::from_u32(u32::from(unsafe { event.u_char.unicode_char })).unwrap_or(' ');
                 if ctrl && c.is_ascii_alphabetic() {
-                    KeyEvent(Key::Char(c), KeyType::Press, KeyModifiers::none().ctrl())
+                    Event::Key(Key::Char(c), KeyType::Press, KeyModifiers::none().ctrl())
                 } else {
-                    KeyEvent(Key::Char(c), KeyType::Press, KeyModifiers::none())
+                    Event::Key(Key::Char(c), KeyType::Press, KeyModifiers::none())
                 }
             }
         }
