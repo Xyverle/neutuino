@@ -1,5 +1,5 @@
 # Neutuino
-Zero dependancy cross-platform pure-rust simple TUI library
+Zero dependency cross-platform pure-rust simple TUI library
 
 Supported OSes: Windows 10+, MacOS (untested), and Linux
 
