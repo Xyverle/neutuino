@@ -5,10 +5,10 @@
 use std::io;
 
 #[cfg(unix)]
-pub use crate::unix::os::*;
+pub use crate::unix::{disable_raw_mode, enable_raw_mode, get_terminal_size};
 
 #[cfg(windows)]
-pub use crate::windows::os::*;
+pub use crate::windows::{disable_raw_mode, enable_raw_mode, get_terminal_size};
 
 /// Struct that calls `enable_raw_mode` on construction
 /// and `disable_raw_mode` on destruction

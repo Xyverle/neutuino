@@ -47,12 +47,12 @@ mod unix;
 mod windows;
 
 pub mod ansi;
+pub mod control;
 pub mod input;
-pub mod os;
 
 pub mod prelude {
     //! Covenience re-export of common members
     pub use crate::ansi::*;
+    pub use crate::control::*;
     pub use crate::input::*;
-    pub use crate::os::*;
 }

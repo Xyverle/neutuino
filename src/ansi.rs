@@ -2,9 +2,15 @@
 //!
 //! These should work on *most* terminals (i.e. Xterm compatible terminals)
 //!
-//! For these to work on Windows you need to run the `enable_ansi` function in the os module
+//! For these to work on Windows you need to run the `enable_ansi` function inside this module
 
 use std::io::{self, Write};
+
+#[cfg(unix)]
+pub use crate::unix::enable_ansi;
+
+#[cfg(windows)]
+pub use crate::windows::enable_ansi;
 
 /// Sets the terminal to an arbitrary 12-bit/truecolor color in the foreground when printed
 #[must_use]

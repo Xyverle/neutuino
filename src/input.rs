@@ -114,7 +114,7 @@ pub enum KeyType {
 }
 
 #[cfg(unix)]
-pub use crate::unix::input::*;
+pub use crate::unix::poll_input;
 
 #[cfg(windows)]
-pub use crate::windows::input::*;
+pub use crate::windows::poll_input;
