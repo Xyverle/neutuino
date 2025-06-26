@@ -1,4 +1,4 @@
-//! Collection of functions that help control the terminal
+//! Utilities that help control the terminal
 //!
 //! These are built to work on Windows, Linux, and MacOS
 

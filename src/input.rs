@@ -1,4 +1,4 @@
-//! Various input functions, structs, etc.
+//! Input Utilities
 //!
 //! Very incomplete currently
 //!

@@ -1,8 +1,8 @@
-//! Collection of ANSI escape code consts/functions
+//! Collection of ANSI escape code utilities
 //!
-//! These should work on *most* terminals (i.e. Xterm compatible terminals)
+//! These should work on *most* terminals
 //!
-//! For these to work on Windows you need to run the `enable_ansi` function inside this module
+//! For these to always work on Windows you need to run the `enable_ansi` function inside this module
 
 use std::io::{self, Write};
 
