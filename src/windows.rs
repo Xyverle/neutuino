@@ -1,4 +1,4 @@
-use crate::input::{Event, Key, KeyModifiers, KeyType};
+use crate::input::{Event, Key, KeyMods, KeyType, press_key};
 use std::os::windows::raw::HANDLE;
 use std::{io, mem, time::Duration};
 
@@ -16,6 +16,7 @@ unsafe extern "system" {
 const STD_INPUT_HANDLE: i32 = -10;
 const STD_OUTPUT_HANDLE: i32 = -11;
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 4;
+const ENABLE_VIRTUAL_TERMINAL_INPUT: u32 = 0x200;
 const ENABLE_ECHO_INPUT: u32 = 4;
 const ENABLE_LINE_INPUT: u32 = 2;
 const ENABLE_PROCESSED_INPUT: u32 = 1;
@@ -111,6 +112,12 @@ pub fn enable_ansi() -> io::Result<()> {
     let mut mode = 0;
     get_console_mode(handle, &mut mode)?;
     mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    set_console_mode(handle, mode)?;
+
+    let handle = get_stdin_handle()?;
+    let mut mode = 0;
+    get_console_mode(handle, &mut mode)?;
+    mode &= !ENABLE_VIRTUAL_TERMINAL_INPUT;
     set_console_mode(handle, mode)?;
     Ok(())
 }
@@ -237,40 +244,36 @@ fn parse_key_event(event: &KeyEventRecord) -> Event {
     let shift = event.control_key_state & 0x0010 != 0; // SHIFT_PRESSED
 
     match event.virtual_key_code {
-        0x08 => Event::Key(Key::Backspace, KeyType::Press, KeyModifiers::none()),
+        0x08 => press_key(Key::Backspace, KeyMods::NONE),
         0x09 => {
             if shift {
-                Event::Key(Key::Tab, KeyType::Press, KeyModifiers::none().shift())
+                press_key(Key::Tab, KeyMods::SHIFT)
             } else {
-                Event::Key(Key::Tab, KeyType::Press, KeyModifiers::none())
+                press_key(Key::Tab, KeyMods::NONE)
             }
         }
-        0x0D => Event::Key(Key::Char('\n'), KeyType::Press, KeyModifiers::none()),
-        0x1B => Event::Key(Key::Escape, KeyType::Press, KeyModifiers::none()),
-        0x21 => Event::Key(Key::PageUp, KeyType::Press, KeyModifiers::none()),
-        0x22 => Event::Key(Key::PageDown, KeyType::Press, KeyModifiers::none()),
-        0x23 => Event::Key(Key::End, KeyType::Press, KeyModifiers::none()),
-        0x24 => Event::Key(Key::Home, KeyType::Press, KeyModifiers::none()),
-        0x25 => Event::Key(Key::Left, KeyType::Press, KeyModifiers::none()),
-        0x26 => Event::Key(Key::Up, KeyType::Press, KeyModifiers::none()),
-        0x27 => Event::Key(Key::Right, KeyType::Press, KeyModifiers::none()),
-        0x28 => Event::Key(Key::Down, KeyType::Press, KeyModifiers::none()),
-        0x2D => Event::Key(Key::Insert, KeyType::Press, KeyModifiers::none()),
-        0x2E => Event::Key(Key::Delete, KeyType::Press, KeyModifiers::none()),
+        0x0D => press_key(Key::Char('\n'), KeyMods::NONE),
+        0x1B => press_key(Key::Escape, KeyMods::NONE),
+        0x21 => press_key(Key::PageUp, KeyMods::NONE),
+        0x22 => press_key(Key::PageDown, KeyMods::NONE),
+        0x23 => press_key(Key::End, KeyMods::NONE),
+        0x24 => press_key(Key::Home, KeyMods::NONE),
+        0x25 => press_key(Key::Left, KeyMods::NONE),
+        0x26 => press_key(Key::Up, KeyMods::NONE),
+        0x27 => press_key(Key::Right, KeyMods::NONE),
+        0x28 => press_key(Key::Down, KeyMods::NONE),
+        0x2D => press_key(Key::Insert, KeyMods::NONE),
+        0x2E => press_key(Key::Delete, KeyMods::NONE),
         // I don't think anybody is going to try to press F256 clippy
         #[allow(clippy::cast_possible_truncation)]
-        0x70..=0x87 => Event::Key(
-            Key::F((event.virtual_key_code - 0x6F) as u8),
-            KeyType::Press,
-            KeyModifiers::none(),
-        ), // F1-F24
+        0x70..=0x87 => press_key(Key::F(event.virtual_key_code - 0x6F) as u8), KeyMods::NONE),
         _ => {
             let num = u32::from(unsafe { event.u_char.unicode_char });
             let c = char::from_u32(num).unwrap_or(' ');
             if ctrl && c.is_ascii_alphabetic() {
-                Event::Key(Key::Char(c), KeyType::Press, KeyModifiers::none().ctrl())
+                press_key(Key::Char(c), KeyMods::CTRL)
             } else {
-                Event::Key(Key::Char(c), KeyType::Press, KeyModifiers::none())
+                press_key(Key::Char(c), KeyMods::NONE)
             }
         }
     }

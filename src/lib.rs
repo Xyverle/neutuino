@@ -40,6 +40,8 @@
 //!
 //! \* Do not have full support for advanced input
 
+use std::io;
+
 #[cfg(unix)]
 mod unix;
 
@@ -55,4 +57,65 @@ pub mod prelude {
     pub use crate::ansi::*;
     pub use crate::control::*;
     pub use crate::input::*;
+}
+
+/// Struct that calls `func(true)` on construction
+/// and `func(false)` on destruction
+pub struct Handler {
+    enabled: bool,
+    func: &'static dyn Fn(bool) -> io::Result<()>,
+}
+
+impl Handler {
+    /// Creates a new instance and turns it on
+    ///
+    /// # Errors
+    ///
+    /// If the function errors
+    pub fn new(func: &'static dyn Fn(bool) -> io::Result<()>) -> io::Result<Self> {
+        let mut handler = Self {
+            enabled: true,
+            func,
+        };
+        handler.set(true)?;
+        return Ok(handler);
+    }
+    /// Calls `func(true)`
+    ///
+    /// # Errors
+    ///
+    /// If the function errors
+    pub fn enable(&mut self) -> io::Result<()> {
+        self.set(true)
+    }
+    /// Calls `func(false)`
+    ///
+    /// # Errors
+    ///
+    /// If the function errors
+    pub fn disable(&mut self) -> io::Result<()> {
+        self.set(false)
+    }
+    /// Calls `func(set)`
+    ///
+    /// # Errors
+    ///
+    /// If the function errors
+    pub fn set(&mut self, set: bool) -> io::Result<()> {
+        if self.enabled != set {
+            (self.func)(set)?;
+        }
+        Ok(())
+    }
+    /// Gets if it is enabled
+    #[must_use]
+    pub fn get(&self) -> bool {
+        self.enabled
+    }
+}
+
+impl Drop for Handler {
+    fn drop(&mut self) {
+        self.disable().expect("Failed to disable terminal raw mode");
+    }
 }

@@ -2,7 +2,7 @@ use std::ffi::{c_int, c_uint, c_ulong, c_ushort};
 use std::io;
 use std::sync::LazyLock;
 
-use crate::input::{Event, Key, KeyModifiers, KeyType};
+use crate::input::{Event, Key, KeyMods, KeyType, press_key};
 use std::ffi::{c_short, c_void};
 use std::time::Duration;
 
@@ -133,6 +133,41 @@ pub fn get_terminal_size() -> io::Result<(u16, u16)> {
     }
 }
 
+// Some of this input code has been modified from [termion](https://github.com/redox-os/termion)
+
+/// Attempts to fetch input from stdin
+///
+/// # Errors
+/// If the timeout has expired or
+/// there was an error getting the data
+pub fn poll_input(timeout: Duration) -> io::Result<Event> {
+    let mut fds = [PollFD {
+        fd: STDIN_FILENO,
+        events: POLLIN,
+        revents: 0,
+    }];
+    let result = unsafe {
+        #[allow(clippy::cast_possible_truncation)]
+        poll(
+            fds.as_mut_ptr(),
+            fds.len() as c_ulong,
+            timeout.as_millis() as c_int,
+        )
+    };
+    let mut read_iter = ReadIterator::new(STDIN_FILENO);
+
+    let timed_out: io::Error = io::ErrorKind::TimedOut.into();
+
+    match result {
+        1.. => {
+            let item = read_iter.next().ok_or(timed_out)??;
+            try_parse_event(item, &mut read_iter)
+        }
+        0 => Err(timed_out),
+        _ => Err(io::Error::last_os_error()),
+    }
+}
+
 unsafe extern "C" {
     fn poll(fds: *mut PollFD, nfds: c_ulong, timeout: c_int) -> c_int;
     fn read(fd: c_int, buf: *mut c_void, count: c_ulong) -> c_short;
@@ -171,87 +206,25 @@ impl Iterator for ReadIterator {
     }
 }
 
-/// Attempts to fetch input from stdin
-///
-/// # Errors
-/// If the timeout has expired or
-/// there was an error getting the data
-pub fn poll_input(timeout: Duration) -> io::Result<Event> {
-    let mut fds = [PollFD {
-        fd: STDIN_FILENO,
-        events: POLLIN,
-        revents: 0,
-    }];
-    let result = unsafe {
-        #[allow(clippy::cast_possible_truncation)]
-        poll(
-            fds.as_mut_ptr(),
-            fds.len() as c_ulong,
-            timeout.as_millis() as c_int,
-        )
-    };
-    let mut read_iter = ReadIterator::new(STDIN_FILENO);
-
-    let timed_out: io::Error = io::ErrorKind::TimedOut.into();
-
-    match result {
-        1.. => {
-            let item = read_iter.next().ok_or(timed_out)??;
-            try_parse_event(item, &mut read_iter)
-        }
-        0 => Err(timed_out),
-        _ => Err(io::Error::last_os_error()),
-    }
-}
-
 fn try_parse_event<I>(item: u8, iter: &mut I) -> io::Result<Event>
 where
     I: Iterator<Item = io::Result<u8>>,
 {
     match item {
         b'\x1b' => try_parse_ansi_sequence(iter),
-        b'\r' => Ok(Event::Key(
-            Key::Char('\n'),
-            KeyType::Press,
-            KeyModifiers::none(),
-        )),
-        b'\n' => Ok(Event::Key(
-            Key::Char('j'),
-            KeyType::Press,
-            KeyModifiers::none().ctrl(),
-        )),
-        b'\t' => Ok(Event::Key(
-            Key::Char('\t'),
-            KeyType::Press,
-            KeyModifiers::none(),
-        )),
-        b'\x7f' => Ok(Event::Key(
-            Key::Backspace,
-            KeyType::Press,
-            KeyModifiers::none(),
-        )),
-        b'\0' => Ok(Event::Key(Key::Null, KeyType::Press, KeyModifiers::none())),
-        c @ b'\x01'..=b'\x1a' => Ok(Event::Key(
-            Key::Char((c + 96) as char),
-            KeyType::Press,
-            KeyModifiers::none().ctrl(),
-        )),
-        c @ b'\x1c'..=b'\x1f' => Ok(Event::Key(
-            Key::Char((c + 24) as char),
-            KeyType::Press,
-            KeyModifiers::none().ctrl(),
-        )),
+        b'\r' => Ok(press_key(Key::Char('\r'), KeyMods::NONE)),
+        b'\n' => Ok(press_key(Key::Char('j'), KeyMods::CTRL)),
+        b'\t' => Ok(press_key(Key::Char('\t'), KeyMods::NONE)),
+        b'\x7f' => Ok(press_key(Key::Backspace, KeyMods::NONE)),
+        b'\0' => Ok(press_key(Key::Char(' '), KeyMods::CTRL)),
+        c @ b'\x01'..=b'\x1a' => Ok(press_key(Key::Char((c + 96) as char), KeyMods::CTRL)),
+        c @ b'\x1c'..=b'\x1f' => Ok(press_key(Key::Char((c + 24) as char), KeyMods::CTRL)),
         c => {
             let character = parse_utf8_char(c, iter)?;
             Ok(Event::Key(
-                Key::Char(parse_utf8_char(c, iter)?),
+                Key::Char(character),
                 KeyType::Press,
-                KeyModifiers {
-                    shift: character.is_uppercase(),
-                    alt: false,
-                    ctrl: false,
-                    meta: false,
-                },
+                KeyMods::NONE.shift(character.is_uppercase()),
             ))
         }
     }
@@ -280,11 +253,7 @@ where
     let error = io::Error::other("Could not parse event");
     match iter.next() {
         Some(Ok(b'O')) => match iter.next() {
-            Some(Ok(val @ b'P'..=b's')) => Ok(Event::Key(
-                Key::F(1 + val - b'P'),
-                KeyType::Press,
-                KeyModifiers::none(),
-            )),
+            Some(Ok(val @ b'P'..=b's')) => Ok(press_key(Key::F(1 + val - b'P'), KeyMods::NONE)),
             _ => Err(error),
         },
         Some(Ok(b'[')) => try_parse_csi_sequence(iter).ok_or(error),
@@ -298,24 +267,16 @@ where
 {
     match iter.next() {
         Some(Ok(b'[')) => match iter.next() {
-            Some(Ok(val @ b'A'..=b'E')) => Some(Event::Key(
-                Key::F(1 + val - b'A'),
-                KeyType::Press,
-                KeyModifiers::none(),
-            )),
+            Some(Ok(val @ b'A'..=b'E')) => Some(press_key(Key::F(1 + val - b'A'), KeyMods::NONE)),
             _ => None,
         },
-        Some(Ok(b'D')) => Some(Event::Key(Key::Left, KeyType::Press, KeyModifiers::none())),
-        Some(Ok(b'C')) => Some(Event::Key(Key::Right, KeyType::Press, KeyModifiers::none())),
-        Some(Ok(b'A')) => Some(Event::Key(Key::Up, KeyType::Press, KeyModifiers::none())),
-        Some(Ok(b'B')) => Some(Event::Key(Key::Down, KeyType::Press, KeyModifiers::none())),
-        Some(Ok(b'H')) => Some(Event::Key(Key::Home, KeyType::Press, KeyModifiers::none())),
-        Some(Ok(b'F')) => Some(Event::Key(Key::End, KeyType::Press, KeyModifiers::none())),
-        Some(Ok(b'Z')) => Some(Event::Key(
-            Key::Tab,
-            KeyType::Press,
-            KeyModifiers::none().shift(),
-        )),
+        Some(Ok(b'D')) => Some(press_key(Key::Left, KeyMods::NONE)),
+        Some(Ok(b'C')) => Some(press_key(Key::Right, KeyMods::NONE)),
+        Some(Ok(b'A')) => Some(press_key(Key::Up, KeyMods::NONE)),
+        Some(Ok(b'B')) => Some(press_key(Key::Down, KeyMods::NONE)),
+        Some(Ok(b'H')) => Some(press_key(Key::Home, KeyMods::NONE)),
+        Some(Ok(b'F')) => Some(press_key(Key::End, KeyMods::NONE)),
+        Some(Ok(b'Z')) => Some(press_key(Key::Tab, KeyMods::SHIFT)),
         _ => None,
     }
 }

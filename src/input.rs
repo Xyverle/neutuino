@@ -12,7 +12,7 @@
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Event {
     /// An event that happens upon a key being pressed
-    Key(Key, KeyType, KeyModifiers),
+    Key(Key, KeyType, KeyMods),
     /// An event that happens upon focus to the terminal window being gained
     FocusGained,
     /// An event that happens upon focus to the terminal window being lost
@@ -52,54 +52,47 @@ pub enum Key {
     Char(char),
     /// The Escape key
     Escape,
-    /// A null byte sent to the terminal
-    ///
-    /// Can mean several different things
-    Null,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 #[allow(clippy::struct_excessive_bools)]
-pub struct KeyModifiers {
+pub struct KeyMods {
     pub shift: bool,
     pub alt: bool,
     pub ctrl: bool,
     pub meta: bool,
 }
 
-impl KeyModifiers {
+impl KeyMods {
+    pub const NONE: Self = Self {
+        shift: false,
+        alt: false,
+        ctrl: false,
+        meta: false,
+    };
+    pub const SHIFT: Self = Self::NONE.shift(true);
+    pub const ALT: Self = Self::NONE.alt(true);
+    pub const CTRL: Self = Self::NONE.ctrl(true);
+    pub const META: Self = Self::NONE.meta(true);
     #[must_use]
-    pub const fn none() -> Self {
-        Self {
-            shift: false,
-            alt: false,
-            ctrl: false,
-            meta: false,
-        }
+    pub const fn shift(mut self, on: bool) -> Self {
+        self.shift = on;
+        self
     }
     #[must_use]
-    pub const fn shift(self) -> Self {
-        let mut value = self;
-        value.shift = true;
-        value
+    pub const fn alt(mut self, on: bool) -> Self {
+        self.alt = on;
+        self
     }
     #[must_use]
-    pub const fn alt(self) -> Self {
-        let mut value = self;
-        value.alt = true;
-        value
+    pub const fn ctrl(mut self, on: bool) -> Self {
+        self.ctrl = on;
+        self
     }
     #[must_use]
-    pub const fn ctrl(self) -> Self {
-        let mut value = self;
-        value.ctrl = true;
-        value
-    }
-    #[must_use]
-    pub const fn meta(self) -> Self {
-        let mut value = self;
-        value.meta = true;
-        value
+    pub const fn meta(mut self, on: bool) -> Self {
+        self.meta = on;
+        self
     }
 }
 
@@ -111,6 +104,10 @@ pub enum KeyType {
     Press,
     Repeat,
     Release,
+}
+
+pub fn press_key(key: Key, key_mods: KeyMods) -> Event {
+    Event::Key(key, KeyType::Press, key_mods)
 }
 
 #[cfg(unix)]

@@ -38,7 +38,7 @@ fn main() -> io::Result<()> {
             COLORS_BG[next(counter)]
         ));
         // q to quit
-        if input == Event::Key(Key::Char('q'), KeyType::Press, KeyModifiers::none()) {
+        if input == Event::Key(Key::Char('q'), KeyType::Press, KeyMods::NONE) {
             break;
         }
         counter = next(counter);

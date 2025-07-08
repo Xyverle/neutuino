@@ -12,6 +12,21 @@ pub use crate::unix::enable_ansi;
 #[cfg(windows)]
 pub use crate::windows::enable_ansi;
 
+fn alt_screen(bool: bool) -> std::io::Result<()> {
+    if bool {
+        print!("{ALT_SCREEN_ENTER}");
+    } else {
+        print!("{ALT_SCREEN_EXIT}");
+    }
+    io::stdout().flush()?;
+    Ok(())
+}
+
+/// Creates a handler for the alt screen
+pub fn alt_screen_handler() -> io::Result<crate::Handler> {
+    crate::Handler::new(&alt_screen)
+}
+
 /// Sets the terminal to an arbitrary 12-bit/truecolor color in the foreground when printed
 #[must_use]
 pub fn rgb_color_code_fg(red: u8, green: u8, blue: u8) -> String {
@@ -85,6 +100,11 @@ pub fn move_cursor_to_position(column: u16, line: u16) -> String {
         column.saturating_add(1)
     )
 }
+
+// /// Enables mouse input
+// pub const ENABLE_MOUSE: &str = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
+// /// Disables mouse input
+// pub const DISABLE_MOUSE: &str = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l"";
 
 /// Saves the current cursor position
 pub const CURSOR_POSITION_SAVE: &str = "\x1b7";
@@ -256,75 +276,3 @@ pub const COLORS: [(&str, &str); 9] = [
     (COLOR_WHITE_FG, COLOR_WHITE_BG),
     (COLOR_DEFAULT_FG, COLOR_DEFAULT_BG),
 ];
-
-/// Struct that prints `ALT_SCREEN_ENTER` on construction
-/// and `ALT_SCREEN_EXIT` on destruction
-///
-/// Prefered over function as it prints `ALT_SCREEN_EXIT` on panic
-pub struct AltScreenHandler {
-    enabled: bool,
-}
-
-impl AltScreenHandler {
-    /// Creates a new instance and sets the terminal into the alternate screen
-    ///
-    /// # Errors
-    ///
-    /// If it fails to print or flush the output
-    pub fn new() -> io::Result<Self> {
-        print!("{ALT_SCREEN_ENTER}");
-        io::stdout().flush()?;
-        Ok(Self { enabled: true })
-    }
-    /// Enables raw mode
-    ///
-    /// # Errors
-    ///
-    /// Never errors if the alt screen is already enabled
-    ///
-    /// If it fails to print or flush the output
-    pub fn enable(&mut self) -> io::Result<()> {
-        self.set(true)
-    }
-    /// Disables raw mode
-    ///
-    /// # Errors
-    ///
-    /// Never errors if the alt screen is already disabled
-    ///
-    /// If it fails to print or flush the output
-    pub fn disable(&mut self) -> io::Result<()> {
-        self.set(false)
-    }
-    /// Sets raw mode
-    ///
-    /// # Errors
-    ///
-    /// Never errors if the alt screen is in the same state as the boolean
-    ///
-    /// If it fails to print or flush the output
-    pub fn set(&mut self, alt: bool) -> io::Result<()> {
-        if self.enabled == alt {
-            return Ok(());
-        }
-        if alt {
-            print!("{ALT_SCREEN_ENTER}");
-        } else {
-            print!("{ALT_SCREEN_EXIT}");
-        }
-        io::stdout().flush()?;
-        self.enabled = alt;
-        Ok(())
-    }
-    /// Gets if the alt screen is enabled
-    #[must_use]
-    pub fn get(&self) -> bool {
-        self.enabled
-    }
-}
-
-impl Drop for AltScreenHandler {
-    fn drop(&mut self) {
-        self.disable().expect("Failed to disable alternate screen");
-    }
-}
