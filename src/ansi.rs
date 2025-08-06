@@ -4,28 +4,11 @@
 //!
 //! For these to always work on Windows you need to run the `enable_ansi` function inside this module
 
-use std::io::{self, Write};
-
 #[cfg(unix)]
 pub use crate::unix::enable_ansi;
 
 #[cfg(windows)]
 pub use crate::windows::enable_ansi;
-
-fn alt_screen(bool: bool) -> std::io::Result<()> {
-    if bool {
-        print!("{ALT_SCREEN_ENTER}");
-    } else {
-        print!("{ALT_SCREEN_EXIT}");
-    }
-    io::stdout().flush()?;
-    Ok(())
-}
-
-/// Creates a handler for the alt screen
-pub fn alt_screen_handler() -> io::Result<crate::Handler> {
-    crate::Handler::new(&alt_screen)
-}
 
 /// Sets the terminal to an arbitrary 12-bit/truecolor color in the foreground when printed
 #[must_use]

@@ -14,7 +14,7 @@ fn main() -> io::Result<()> {
     let all_styles = format!("{STYLE_BOLD}{STYLE_ITALIC}{STYLE_UNDERLINE}");
 
     enable_ansi()?;
-    let _raw_terminal = RawModeHandler::new()?;
+    enable_raw_mode()?;
 
     println!("q to quit{}", move_cursor_to_column(0));
     let next = |x: usize| (x + 1) % COLORS_FG.len();
@@ -43,5 +43,6 @@ fn main() -> io::Result<()> {
         }
         counter = next(counter);
     }
+    disable_raw_mode()?;
     Ok(())
 }

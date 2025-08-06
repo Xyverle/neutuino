@@ -10,7 +10,7 @@ unsafe extern "C" {
     fn ioctl(fd: c_int, request: c_ulong, argp: *mut u8) -> c_int;
     fn cfmakeraw(termios: *mut Termios);
     fn tcgetattr(fd: c_int, termios: *mut Termios) -> c_int;
-    fn tcsetattr(fd: c_int, optional_actions: c_int, termios: *mut Termios) -> c_int;
+    fn tcsetattr(fd: c_int, optional_actions: c_int, termios: *const Termios) -> c_int;
 }
 
 const STDIN_FILENO: c_int = 0;
@@ -26,6 +26,8 @@ const NCCS: usize = 0x20;
 const TIOCGWINSZ: c_ulong = 0x4008_7468;
 #[cfg(target_os = "macos")]
 const NCCS: usize = 0x14;
+
+const ERROR_MAGIC: i32 = 68905;
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
@@ -44,6 +46,10 @@ struct Termios {
     cflag: c_uint,
     lflag: c_uint,
     cc: [u8; NCCS],
+    #[cfg(target_os = "linux")]
+    ispeed: c_ulong,
+    #[cfg(target_os = "linux")]
+    ospeed: c_ulong,
 }
 
 fn get_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
@@ -60,10 +66,13 @@ fn set_attributes(fd: c_int, termios: &mut Termios) -> io::Result<()> {
     Ok(())
 }
 
-static TERMIOS: LazyLock<Option<Termios>> = LazyLock::new(|| {
-    let mut orig_termios = Termios::default();
-    get_attributes(STDIN_FILENO, &mut orig_termios).ok()?;
-    Some(orig_termios)
+static TERMIOS: LazyLock<Result<Termios, i32>> = LazyLock::new(|| {
+    let mut orig_termios = unsafe { std::mem::zeroed() };
+    let attributes = get_attributes(STDIN_FILENO, &mut orig_termios);
+    match attributes {
+        Ok(()) => Ok(orig_termios),
+        Err(e) => Err(e.raw_os_error().unwrap_or(ERROR_MAGIC)),
+    }
 });
 
 /// Enables raw mode, which disables line buffering, input echoing, and output canonicalization
@@ -74,7 +83,12 @@ static TERMIOS: LazyLock<Option<Termios>> = LazyLock::new(|| {
 /// stdin is not a tty,
 /// or it fails to change terminal settings
 pub fn enable_raw_mode() -> io::Result<()> {
-    let mut termios = (*TERMIOS).ok_or(io::Error::other("Failed to get terminal properties"))?;
+    let mut termios = (*TERMIOS).map_err(|e| {
+        if e == ERROR_MAGIC {
+            return io::Error::other("Failed to get terminal properties");
+        }
+        io::Error::from_raw_os_error(e)
+    })?;
     unsafe {
         cfmakeraw(&mut termios);
     }
@@ -90,7 +104,12 @@ pub fn enable_raw_mode() -> io::Result<()> {
 /// stdin is not a tty,
 /// or it fails to change terminal settings
 pub fn disable_raw_mode() -> io::Result<()> {
-    let mut termios = (*TERMIOS).ok_or(io::Error::other("Failed to get terminal properties"))?;
+    let mut termios = (*TERMIOS).map_err(|e| {
+        if e == ERROR_MAGIC {
+            return io::Error::other("Failed to get terminal properties");
+        }
+        io::Error::from_raw_os_error(e)
+    })?;
     set_attributes(STDIN_FILENO, &mut termios)?;
     Ok(())
 }
@@ -257,6 +276,29 @@ where
             _ => Err(error),
         },
         Some(Ok(b'[')) => try_parse_csi_sequence(iter).ok_or(error),
+        Some(Ok(c)) => match c {
+            b'\r' => Ok(press_key(Key::Char('\r'), KeyMods::ALT)),
+            b'\n' => Ok(press_key(Key::Char('j'), KeyMods::CTRL.alt(true))),
+            b'\t' => Ok(press_key(Key::Char('\t'), KeyMods::ALT)),
+            b'\x7f' => Ok(press_key(Key::Backspace, KeyMods::ALT)),
+            b'\0' => Ok(press_key(Key::Char(' '), KeyMods::CTRL.alt(true))),
+            c @ b'\x01'..=b'\x1a' => Ok(press_key(
+                Key::Char((c + 96) as char),
+                KeyMods::CTRL.alt(true),
+            )),
+            c @ b'\x1c'..=b'\x1f' => Ok(press_key(
+                Key::Char((c + 24) as char),
+                KeyMods::CTRL.alt(true),
+            )),
+            c => {
+                let character = parse_utf8_char(c, iter)?;
+                Ok(Event::Key(
+                    Key::Char(character),
+                    KeyType::Press,
+                    KeyMods::NONE.shift(character.is_uppercase()).alt(true),
+                ))
+            }
+        },
         _ => Err(error),
     }
 }
