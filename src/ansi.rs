@@ -84,11 +84,6 @@ pub fn move_cursor_to_position(column: u16, line: u16) -> String {
     )
 }
 
-// /// Enables mouse input
-// pub const ENABLE_MOUSE: &str = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
-// /// Disables mouse input
-// pub const DISABLE_MOUSE: &str = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l"";
-
 /// Saves the current cursor position
 pub const CURSOR_POSITION_SAVE: &str = "\x1b7";
 /// Restores the saved cursor position

@@ -1,4 +1,4 @@
-use crate::input::{Event, Key, KeyMods, KeyType, press_key};
+use crate::input::{Event, Key, key_helper};
 use std::os::windows::raw::HANDLE;
 use std::{io, mem, time::Duration};
 
@@ -62,6 +62,30 @@ fn get_console_mode(handle: HANDLE, mode: &mut u32) -> io::Result<()> {
     } else {
         Ok(())
     }
+}
+
+/// Enable kitty comprehensive keyboard handling protocol
+pub fn enable_kitty_keyboard() {}
+
+/// Disable kitty comprehensive keyboard handling protocol
+pub fn disable_kitty_keyboard() {}
+
+/// Enable mouse input, if available
+///
+/// # Errors
+///
+/// Never currently
+pub fn enable_mouse_input() -> io::Result<()> {
+    Ok(())
+}
+
+/// Disable mouse input, if available
+///
+/// # Errors
+///
+/// Never currently
+pub fn disable_mouse_input() -> io::Result<()> {
+    Ok(())
 }
 
 /// Enables raw mode, which disables line buffering, input echoing, and output canonicalization
@@ -244,36 +268,36 @@ fn parse_key_event(event: &KeyEventRecord) -> Event {
     let shift = event.control_key_state & 0x0010 != 0; // SHIFT_PRESSED
 
     match event.virtual_key_code {
-        0x08 => press_key(Key::Backspace, KeyMods::NONE),
+        0x08 => key_helper("", Key::Backspace),
         0x09 => {
             if shift {
-                press_key(Key::Tab, KeyMods::SHIFT)
+                key_helper("S", Key::Tab)
             } else {
-                press_key(Key::Tab, KeyMods::NONE)
+                key_helper("", Key::Tab)
             }
         }
-        0x0D => press_key(Key::Char('\n'), KeyMods::NONE),
-        0x1B => press_key(Key::Escape, KeyMods::NONE),
-        0x21 => press_key(Key::PageUp, KeyMods::NONE),
-        0x22 => press_key(Key::PageDown, KeyMods::NONE),
-        0x23 => press_key(Key::End, KeyMods::NONE),
-        0x24 => press_key(Key::Home, KeyMods::NONE),
-        0x25 => press_key(Key::Left, KeyMods::NONE),
-        0x26 => press_key(Key::Up, KeyMods::NONE),
-        0x27 => press_key(Key::Right, KeyMods::NONE),
-        0x28 => press_key(Key::Down, KeyMods::NONE),
-        0x2D => press_key(Key::Insert, KeyMods::NONE),
-        0x2E => press_key(Key::Delete, KeyMods::NONE),
+        0x0D => key_helper("", Key::Char('\n')),
+        0x1B => key_helper("", Key::Escape),
+        0x21 => key_helper("", Key::PageUp),
+        0x22 => key_helper("", Key::PageDown),
+        0x23 => key_helper("", Key::End),
+        0x24 => key_helper("", Key::Home),
+        0x25 => key_helper("", Key::Left),
+        0x26 => key_helper("", Key::Up),
+        0x27 => key_helper("", Key::Right),
+        0x28 => key_helper("", Key::Down),
+        0x2D => key_helper("", Key::Insert),
+        0x2E => key_helper("", Key::Delete),
         // I don't think anybody is going to try to press F256 clippy
         #[allow(clippy::cast_possible_truncation)]
-        0x70..=0x87 => press_key(Key::F(event.virtual_key_code - 0x6F) as u8), KeyMods::NONE),
+        0x70..=0x87 => key_helper("", Key::F((event.virtual_key_code - 0x6F) as u8)),
         _ => {
             let num = u32::from(unsafe { event.u_char.unicode_char });
             let c = char::from_u32(num).unwrap_or(' ');
             if ctrl && c.is_ascii_alphabetic() {
-                press_key(Key::Char(c), KeyMods::CTRL)
+                key_helper("C", Key::Char(c))
             } else {
-                press_key(Key::Char(c), KeyMods::NONE)
+                key_helper("", Key::Char(c))
             }
         }
     }

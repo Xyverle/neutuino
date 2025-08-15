@@ -12,8 +12,8 @@ fn main() -> io::Result<()> {
     enable_ansi()?;
 
     // makes the terminal raw until this value is dropped
-    let _raw_terminal = RawModeHandler::new()?;
-    let _alt_screen = AltScreenHandler::new()?;
+    enable_raw_mode()?;
+    println!("{ALT_SCREEN_ENTER}");
 
     // gets the size of the terminal
     let terminal_size = get_terminal_size()?;
@@ -30,6 +30,9 @@ fn main() -> io::Result<()> {
     io::stdout().flush()?; // VERY IMPORTANT!
 
     thread::sleep(time::Duration::new(3, 0));
+
+    disable_raw_mode()?;
+    println!("{ALT_SCREEN_EXIT}");
 
     // no flush needed here as the program is about to end and it will be auto flushed
     Ok(())

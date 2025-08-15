@@ -44,13 +44,3 @@ it is most likely not without good reason
 - Other Kitty protocols (there are a lot of them) (Not planned)
 
 \* Do not have full support for advanced input
-
-## Structure
-This library has multiple APIs
-
-Inside the `cli` module there are utilities for making something similar to Cargo or Git
-
-And inside the `tui` module there are utilities for making something similar to Neovim or Emacs
-
-And inside the rest of the library there are lower-level APIs in case you want to abstract over
-this library yourself or if you need more precise control over the terminal
