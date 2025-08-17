@@ -90,7 +90,7 @@ pub struct Modifiers {
 }
 
 impl Modifiers {
-    pub const fn new(shift: bool, alt: bool, ctrl: bool) -> Self {
+    #[must_use] pub const fn new(shift: bool, alt: bool, ctrl: bool) -> Self {
         Self { shift, alt, ctrl }
     }
 
@@ -131,7 +131,6 @@ pub enum ButtonType {
     Release,
 }
 
-#[inline(always)]
 pub(crate) const fn key_helper(mods: &str, key: Key) -> Event {
     let mut key_mods = Modifiers::NONE;
     let mut key_type = ButtonType::Press;
@@ -139,9 +138,9 @@ pub(crate) const fn key_helper(mods: &str, key: Key) -> Event {
     let string = mods.as_bytes();
     let mut i = 0;
     while i < string.len() {
-        key_mods.alt = key_mods.alt | (string[i] == b'A');
-        key_mods.ctrl = key_mods.ctrl | (string[i] == b'C');
-        key_mods.shift = key_mods.shift | (string[i] == b'S');
+        key_mods.alt |= string[i] == b'A';
+        key_mods.ctrl |= string[i] == b'C';
+        key_mods.shift |= string[i] == b'S';
         if string[i] == b'-' {
             key_type = ButtonType::Release;
         }
@@ -159,10 +158,10 @@ pub(crate) const fn simple_key(key: Key, shift: bool, alt: bool, ctrl: bool) -> 
 }
 
 #[cfg(unix)]
-pub use crate::unix::poll_input;
+pub use crate::unix_input::poll_input;
 
 #[cfg(windows)]
-pub use crate::windows::poll_input;
+pub use crate::windows_input::poll_input;
 
 #[test]
 fn test_key_helper() {

@@ -8,6 +8,12 @@ mod unix;
 #[cfg(windows)]
 mod windows;
 
+#[cfg(unix)]
+mod unix_input;
+
+#[cfg(windows)]
+mod windows_input;
+
 pub mod ansi;
 pub mod control;
 pub mod input;
